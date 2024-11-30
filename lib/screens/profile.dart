@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'transaction_review.dart';
 import 'watchlist.dart';
-import 'package:mobile_p/components/hansung_point.dart';
+import '../components/hansung_point.dart';
 import 'editprofile.dart';
 import 'home.dart';
 import 'my_product.dart';
