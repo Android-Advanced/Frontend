@@ -1,0 +1,31 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "hansungmarketback",
+          "appId": "1:299226866296:android:4faaa0cb3aab0bf525c38d",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "hansungmarketback",
+          "configurations": {
+            "android": "1:299226866296:android:4faaa0cb3aab0bf525c38d",
+            "ios": "1:299226866296:ios:42fc53416c794b9d25c38d",
+            "web": "1:299226866296:web:e894f992510fa5a425c38d",
+            "windows": "1:299226866296:web:55983fce846cda2725c38d"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}
