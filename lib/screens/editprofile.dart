@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class EditProfile extends StatefulWidget {
   const EditProfile({Key? key}) : super(key: key);
@@ -8,13 +13,73 @@ class EditProfile extends StatefulWidget {
 }
 
 class _EditProfileState extends State<EditProfile> {
-  // List of interest categories
+  final TextEditingController _nameController = TextEditingController();
   final List<String> categories = [
     "맛집 탐방", "전자제품", "건강", "스포츠", "책", "운동", "중고차", "가구", "도서", "식물", "상품권"
   ];
+  final Set<String> selectedCategories = {};
+  String profileImage = "";
+  bool isLoading = true;
 
-  // Currently selected categories
-  final Set<String> selectedCategories = {"전자제품", "도서"};
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      final data = userDoc.data() as Map<String, dynamic>;
+      setState(() {
+        _nameController.text = data['displayName'] ?? '';
+        selectedCategories.addAll(List<String>.from(data['categories'] ?? []));
+        profileImage = data['profileImage'] ?? "";
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _saveUserData() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).update({
+        'displayName': _nameController.text,
+        'categories': selectedCategories.toList(),
+        'profileImage': profileImage,
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('정보가 성공적으로 저장되었습니다.')),
+      );
+    }
+  }
+
+  Future<void> _changeProfilePicture() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('profileImages')
+            .child('${currentUser.uid}.jpg');
+
+        await ref.putFile(File(pickedFile.path));
+        final newImageUrl = await ref.getDownloadURL();
+
+        setState(() {
+          profileImage = newImageUrl;
+        });
+      }
+    }
+  }
 
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
@@ -44,25 +109,26 @@ class _EditProfileState extends State<EditProfile> {
 
   Widget _profilePictureSection() {
     return Stack(
-      alignment: Alignment.center, // Ensures the avatar stays centered
+      alignment: Alignment.center,
       children: [
-        Center(
-          child: CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.grey[300],
-            child: Icon(
-              Icons.person,
-              size: 60,
-              color: Colors.white,
-            ),
-          ),
+        CircleAvatar(
+          radius: 50,
+          backgroundColor: Colors.grey[300],
+          backgroundImage: profileImage.isNotEmpty
+              ? NetworkImage(profileImage)
+              : AssetImage('assets/images/user_profile.jpg') as ImageProvider,
+          child: profileImage.isEmpty
+              ? Icon(
+            Icons.person,
+            size: 60,
+            color: Colors.white,
+          )
+              : null,
         ),
         Positioned(
-          right: 0, // Adjust this value to control distance from the right edge
+          right: 0,
           child: ElevatedButton(
-            onPressed: () {
-              // Add photo change functionality here
-            },
+            onPressed: _changeProfilePicture,
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF2657A1),
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -79,29 +145,6 @@ class _EditProfileState extends State<EditProfile> {
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _textField(String initialValue, bool obscureText) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 5),
-        TextField(
-          obscureText: obscureText,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey[200],
-            contentPadding: EdgeInsets.symmetric(horizontal: 10),
-            border: OutlineInputBorder(
-              borderSide: BorderSide.none,
-              borderRadius: BorderRadius.circular(5),
-            ),
-          ),
-          controller: TextEditingController(text: initialValue),
-        ),
-        SizedBox(height: 20),
       ],
     );
   }
@@ -142,10 +185,13 @@ class _EditProfileState extends State<EditProfile> {
     );
   }
 
-
-
-
   Widget _bodyWidget() {
+    if (isLoading) {
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(20),
       child: Column(
@@ -157,8 +203,19 @@ class _EditProfileState extends State<EditProfile> {
             "이름",
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          _textField("한성부기", false),
-          _textField("********", true),
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[200],
+              contentPadding: EdgeInsets.symmetric(horizontal: 10),
+              border: OutlineInputBorder(
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
           Text(
             "관심 카테고리",
             style: TextStyle(fontSize: 14, color: Colors.grey),
@@ -168,24 +225,22 @@ class _EditProfileState extends State<EditProfile> {
           SizedBox(height: 20),
           Center(
             child: ElevatedButton(
-            onPressed: () {
-            // Add save functionality here
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF2657A1),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
-                    ),
-            ),
-            child: Text(
-                    "저장 하기",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
+              onPressed: _saveUserData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF2657A1),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
               ),
+              child: Text(
+                "저장 하기",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -196,7 +251,7 @@ class _EditProfileState extends State<EditProfile> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appbarWidget(),
-      body: _bodyWidget()
+      body: _bodyWidget(),
     );
   }
 }

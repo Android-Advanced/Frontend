@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 추가
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -65,6 +66,27 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// Firestore에 사용자 데이터를 저장하는 메서드
+  Future<void> _saveUserDataToFirestore(String uid, String email) async {
+    try {
+      // 기본 프로필 이미지 경로
+      const defaultProfileImage =
+          'gs://hansungmarketback.firebasestorage.app/basicProfile.png';
+
+      // Firestore에 데이터 저장
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'displayName': email.split('@')[0], // 이메일 앞부분을 닉네임으로 설정
+        'email': email,
+        'hansungPoint': 36.5, // 초기 포인트
+        'profileImage': defaultProfileImage, // 기본 프로필 이미지
+      });
+
+      print('Firestore에 유저 데이터 저장 완료');
+    } catch (e) {
+      print('Firestore에 유저 데이터 저장 실패: $e');
+    }
+  }
+
   /// Firebase 회원가입 메서드
   Future<void> _signupWithEmailPassword() async {
     final email = signupEmailController.text.trim();
@@ -85,13 +107,20 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       User? user = userCredential.user;
-      if (user != null && !user.emailVerified) {
-        await user.sendEmailVerification();
+      if (user != null) {
+        if (!user.emailVerified) {
+          await user.sendEmailVerification();
+        }
+
+        // Firestore에 사용자 데이터 저장
+        await _saveUserDataToFirestore(user.uid, email);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('회원가입이 완료되었습니다. 이메일 인증 메일을 확인해주세요.')),
         );
+
+        _switchToPage(0); // 로그인 페이지로 이동
       }
-      _switchToPage(0); // 로그인 페이지로 이동
     } catch (e) {
       setState(() {
         signupEmailError = '회원가입에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
@@ -157,7 +186,6 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
-
   void _validateSignupPassword() {
     setState(() {
       final password = signupPasswordController.text;
