@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 추가
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'home_page.dart';
@@ -14,17 +16,44 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isPasswordVisible = false;
   bool isPasswordConfirmVisible = false;
 
-  TextEditingController studentIdController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  TextEditingController signupStudentIdController = TextEditingController();
+  TextEditingController signupEmailController = TextEditingController();
   TextEditingController signupPasswordController = TextEditingController();
   TextEditingController confirmPasswordController = TextEditingController();
 
-  String? studentIdError;
+  String? emailError;
   String? passwordError;
-  String? signupStudentIdError;
+  String? signupEmailError;
   String? signupPasswordError;
   String? confirmPasswordError;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 회원가입 이메일 자동완성 리스너 추가
+    signupEmailController.addListener(() {
+      final email = signupEmailController.text;
+      if (!email.contains('@') && !email.endsWith('@hansung.ac.kr')) {
+        signupEmailController.text = email + '@hansung.ac.kr';
+        signupEmailController.selection = TextSelection.fromPosition(
+          TextPosition(offset: email.length),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // 컨트롤러 해제
+    signupEmailController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    signupPasswordController.dispose();
+    super.dispose();
+  }
 
   void _switchToPage(int page) {
     setState(() {
@@ -37,13 +66,126 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _validateLogin() {
-    setState(() {
-      studentIdError = '존재하지 않는 학번입니다.';
-      passwordError = '잘못된 비밀번호입니다.';
-    });
+  /// Firestore에 사용자 데이터를 저장하는 메서드
+  Future<void> _saveUserDataToFirestore(String uid, String email) async {
+    try {
+      // 기본 프로필 이미지 경로
+      const defaultProfileImage =
+          'gs://hansungmarketback.firebasestorage.app/basicProfile.png';
+
+      // Firestore에 데이터 저장
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'displayName': email.split('@')[0], // 이메일 앞부분을 닉네임으로 설정
+        'email': email,
+        'hansungPoint': 36.5, // 초기 포인트
+        'profileImage': defaultProfileImage, // 기본 프로필 이미지
+      });
+
+      print('Firestore에 유저 데이터 저장 완료');
+    } catch (e) {
+      print('Firestore에 유저 데이터 저장 실패: $e');
+    }
   }
 
+  /// Firebase 회원가입 메서드
+  Future<void> _signupWithEmailPassword() async {
+    final email = signupEmailController.text.trim();
+
+    // 이메일 검증
+    if (!email.endsWith('@hansung.ac.kr')) {
+      setState(() {
+        signupEmailError = '한성대학교 이메일 주소만 사용할 수 있습니다.';
+      });
+      return;
+    }
+
+    try {
+      final auth = FirebaseAuth.instance;
+      UserCredential userCredential = await auth.createUserWithEmailAndPassword(
+        email: email,
+        password: signupPasswordController.text.trim(),
+      );
+
+      User? user = userCredential.user;
+      if (user != null) {
+        if (!user.emailVerified) {
+          await user.sendEmailVerification();
+        }
+
+        // Firestore에 사용자 데이터 저장
+        await _saveUserDataToFirestore(user.uid, email);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('회원가입이 완료되었습니다. 이메일 인증 메일을 확인해주세요.')),
+        );
+
+        _switchToPage(0); // 로그인 페이지로 이동
+      }
+    } catch (e) {
+      setState(() {
+        signupEmailError = '회원가입에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
+      });
+    }
+  }
+
+  /// Firebase 로그인 메서드
+  Future<void> _loginWithEmailPassword() async {
+    final email = emailController.text.trim();
+
+    // 이메일 검증
+    if (!email.endsWith('@hansung.ac.kr')) {
+      setState(() {
+        emailError = '한성대학교 이메일 주소만 사용할 수 있습니다.';
+      });
+      return;
+    }
+
+    try {
+      final auth = FirebaseAuth.instance;
+      UserCredential userCredential = await auth.signInWithEmailAndPassword(
+        email: email,
+        password: passwordController.text.trim(),
+      );
+
+      User? user = userCredential.user;
+      if (user != null) {
+        if (user.emailVerified) {
+          // 인증된 사용자
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage()),
+          );
+        } else {
+          // 이메일 인증 필요
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('이메일 인증이 필요합니다. 이메일을 확인해주세요.')),
+          );
+          await auth.signOut(); // 인증되지 않은 사용자 로그아웃 처리
+        }
+      }
+    } catch (e) {
+      // 요청 차단에 대한 에러 처리
+      if (e.toString().contains('We have blocked all requests')) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('잠시 후 다시 시도해주세요'),
+            content: Text('비정상적인 활동이 감지되었습니다. 잠시 후에 다시 시도해주세요.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('확인'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        setState(() {
+          emailError = '로그인에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
+        });
+      }
+    }
+  }
   void _validateSignupPassword() {
     setState(() {
       final password = signupPasswordController.text;
@@ -81,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: screenHeight * 0.1), // 최상단 여백 조정
+              SizedBox(height: screenHeight * 0.1),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -116,12 +258,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   Flexible(
                     flex: 1,
                     child: Transform.translate(
-                      offset: Offset(20, -10), // 오른쪽으로 10, 위로 -10 이동
+                      offset: Offset(20, -10),
                       child: Container(
                         alignment: Alignment.topRight,
                         child: Image.asset(
                           'assets/images/image_6.png',
-                          width: screenWidth * 0.35, // 크기를 35%로 키움
+                          width: screenWidth * 0.35,
                           height: screenWidth * 0.35,
                           fit: BoxFit.contain,
                         ),
@@ -140,7 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 1,
                 ),
               ),
-              SizedBox(height: screenHeight * 0.03), // 추가 UI 요소와의 간격 조정
+              SizedBox(height: screenHeight * 0.03),
               Row(
                 children: [
                   GestureDetector(
@@ -198,23 +340,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (isLoginSelected) {
-                      _validateLogin();
-                     // if (studentIdError == null && passwordError == null) { 잠시 기능 구현때문에 꺼놓음
-                        //if () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => HomePage()),
-                        );
-                      //}
+                      _loginWithEmailPassword();
                     } else {
                       _validateSignupPassword();
                       _validateConfirmPassword();
-                      if (signupPasswordError == null && confirmPasswordError == null) {
-                        // 회원가입 완료 후 동작 추가
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => HomePage()),
-                        );
+                      if (signupPasswordError == null &&
+                          confirmPasswordError == null) {
+                        _signupWithEmailPassword();
                       }
                     }
                   },
@@ -251,10 +383,10 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          controller: studentIdController,
+          controller: emailController,
           decoration: InputDecoration(
-            labelText: '학번',
-            errorText: studentIdError,
+            labelText: '학교 이메일',
+            errorText: emailError,
           ),
         ),
         SizedBox(height: screenHeight * 0.01),
@@ -285,10 +417,10 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          controller: signupStudentIdController,
+          controller: signupEmailController,
           decoration: InputDecoration(
-            labelText: '학번',
-            errorText: signupStudentIdError,
+            labelText: '학교 이메일',
+            errorText: signupEmailError,
           ),
         ),
         SizedBox(height: screenHeight * 0.01),

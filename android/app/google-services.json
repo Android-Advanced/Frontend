@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "299226866296",
+    "project_id": "hansungmarketback",
+    "storage_bucket": "hansungmarketback.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:299226866296:android:4faaa0cb3aab0bf525c38d",
+        "android_client_info": {
+          "package_name": "com.hansung.market"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA0KJbaDH4MobJvkmhwYeAslpkIfJ-GNs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

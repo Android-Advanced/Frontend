@@ -1,4 +1,4 @@
-package com.example.mobile_p
+package com.hansung.market
 
 import io.flutter.embedding.android.FlutterActivity
 
