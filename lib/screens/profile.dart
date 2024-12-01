@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'transaction_review.dart';
 import 'watchlist.dart';
 import '../components/hansung_point.dart';
@@ -15,6 +18,48 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
+  String displayName = "사용자 이름";
+  double hansungPoint = 0.0;
+  String profileImage = "";
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      final data = userDoc.data() as Map<String, dynamic>;
+      setState(() {
+        displayName = data['displayName'] ?? "사용자 이름";
+        hansungPoint = data['hansungPoint'] ?? 0.0;
+        profileImage = data['profileImage'] ?? "";
+
+        // Firebase Storage URL 변환
+        if (profileImage.startsWith('gs://')) {
+          FirebaseStorage.instance
+              .refFromURL(profileImage)
+              .getDownloadURL()
+              .then((url) {
+            setState(() {
+              profileImage = url;
+            });
+          });
+        }
+
+        isLoading = false;
+      });
+    }
+  }
+
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
       backgroundColor: Colors.white,
@@ -56,6 +101,12 @@ class _ProfileState extends State<Profile> {
       {"icon": Icons.star_border, "title": "거래 후기"},
     ];
 
+    if (isLoading) {
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,18 +121,26 @@ class _ProfileState extends State<Profile> {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey[300],
-                  backgroundImage: AssetImage('assets/images/user_profile.jpg'),
-                  child: Icon(
+                  backgroundImage: profileImage.isNotEmpty
+                      ? NetworkImage(profileImage)
+                      : AssetImage('assets/images/user_profile.jpg')
+                  as ImageProvider,
+                  child: profileImage.isEmpty
+                      ? Icon(
                     Icons.person,
                     size: 60,
                     color: Colors.white,
-                  ),
+                  )
+                      : null,
                 ),
                 SizedBox(width: 20),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    HansungPoint(hansungpoint: 35.0), // 점수 전달
+                    HansungPoint(
+                      displayName: displayName,
+                      hansungPoint: hansungPoint,
+                    ),
                   ],
                 ),
               ],
@@ -151,7 +210,7 @@ class _ProfileState extends State<Profile> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => EditProfile()),
-                    );
+                    ).then((_) => _fetchUserData()); // Refresh data after editing
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF2657A1), // Button color (blue)

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 추가
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -27,6 +28,33 @@ class _LoginScreenState extends State<LoginScreen> {
   String? signupPasswordError;
   String? confirmPasswordError;
 
+  @override
+  void initState() {
+    super.initState();
+
+    // 회원가입 이메일 자동완성 리스너 추가
+    signupEmailController.addListener(() {
+      final email = signupEmailController.text;
+      if (!email.contains('@') && !email.endsWith('@hansung.ac.kr')) {
+        signupEmailController.text = email + '@hansung.ac.kr';
+        signupEmailController.selection = TextSelection.fromPosition(
+          TextPosition(offset: email.length),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // 컨트롤러 해제
+    signupEmailController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    signupPasswordController.dispose();
+    super.dispose();
+  }
+
   void _switchToPage(int page) {
     setState(() {
       isLoginSelected = page == 0;
@@ -38,23 +66,61 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// Firestore에 사용자 데이터를 저장하는 메서드
+  Future<void> _saveUserDataToFirestore(String uid, String email) async {
+    try {
+      // 기본 프로필 이미지 경로
+      const defaultProfileImage =
+          'gs://hansungmarketback.firebasestorage.app/basicProfile.png';
+
+      // Firestore에 데이터 저장
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'displayName': email.split('@')[0], // 이메일 앞부분을 닉네임으로 설정
+        'email': email,
+        'hansungPoint': 36.5, // 초기 포인트
+        'profileImage': defaultProfileImage, // 기본 프로필 이미지
+      });
+
+      print('Firestore에 유저 데이터 저장 완료');
+    } catch (e) {
+      print('Firestore에 유저 데이터 저장 실패: $e');
+    }
+  }
+
   /// Firebase 회원가입 메서드
   Future<void> _signupWithEmailPassword() async {
+    final email = signupEmailController.text.trim();
+
+    // 이메일 검증
+    if (!email.endsWith('@hansung.ac.kr')) {
+      setState(() {
+        signupEmailError = '한성대학교 이메일 주소만 사용할 수 있습니다.';
+      });
+      return;
+    }
+
     try {
       final auth = FirebaseAuth.instance;
       UserCredential userCredential = await auth.createUserWithEmailAndPassword(
-        email: signupEmailController.text.trim(),
+        email: email,
         password: signupPasswordController.text.trim(),
       );
 
       User? user = userCredential.user;
-      if (user != null && !user.emailVerified) {
-        await user.sendEmailVerification();
+      if (user != null) {
+        if (!user.emailVerified) {
+          await user.sendEmailVerification();
+        }
+
+        // Firestore에 사용자 데이터 저장
+        await _saveUserDataToFirestore(user.uid, email);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('회원가입이 완료되었습니다. 이메일 인증 메일을 확인해주세요.')),
         );
+
+        _switchToPage(0); // 로그인 페이지로 이동
       }
-      _switchToPage(0); // 로그인 페이지로 이동
     } catch (e) {
       setState(() {
         signupEmailError = '회원가입에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
@@ -64,10 +130,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Firebase 로그인 메서드
   Future<void> _loginWithEmailPassword() async {
+    final email = emailController.text.trim();
+
+    // 이메일 검증
+    if (!email.endsWith('@hansung.ac.kr')) {
+      setState(() {
+        emailError = '한성대학교 이메일 주소만 사용할 수 있습니다.';
+      });
+      return;
+    }
+
     try {
       final auth = FirebaseAuth.instance;
       UserCredential userCredential = await auth.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
+        email: email,
         password: passwordController.text.trim(),
       );
 
@@ -88,12 +164,28 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      setState(() {
-        emailError = '로그인에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
-      });
+      // 요청 차단에 대한 에러 처리
+      if (e.toString().contains('We have blocked all requests')) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('잠시 후 다시 시도해주세요'),
+            content: Text('비정상적인 활동이 감지되었습니다. 잠시 후에 다시 시도해주세요.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('확인'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        setState(() {
+          emailError = '로그인에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
+        });
+      }
     }
   }
-
   void _validateSignupPassword() {
     setState(() {
       final password = signupPasswordController.text;
@@ -248,17 +340,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (isLoginSelected) {
-                      // 로그인 버튼 클릭 시
                       _loginWithEmailPassword();
                     } else {
-                      // 회원가입 버튼 클릭 시
                       _validateSignupPassword();
                       _validateConfirmPassword();
-                      if (signupPasswordError == null && confirmPasswordError == null) {
+                      if (signupPasswordError == null &&
+                          confirmPasswordError == null) {
                         _signupWithEmailPassword();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('회원등록이 완료되었습니다. 이메일 인증 메일을 확인해주세요.')),
-                        );
                       }
                     }
                   },
