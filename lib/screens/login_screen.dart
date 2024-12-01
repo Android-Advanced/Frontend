@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'home_page.dart';
@@ -14,15 +15,15 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isPasswordVisible = false;
   bool isPasswordConfirmVisible = false;
 
-  TextEditingController studentIdController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  TextEditingController signupStudentIdController = TextEditingController();
+  TextEditingController signupEmailController = TextEditingController();
   TextEditingController signupPasswordController = TextEditingController();
   TextEditingController confirmPasswordController = TextEditingController();
 
-  String? studentIdError;
+  String? emailError;
   String? passwordError;
-  String? signupStudentIdError;
+  String? signupEmailError;
   String? signupPasswordError;
   String? confirmPasswordError;
 
@@ -37,11 +38,60 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _validateLogin() {
-    setState(() {
-      studentIdError = '존재하지 않는 학번입니다.';
-      passwordError = '잘못된 비밀번호입니다.';
-    });
+  /// Firebase 회원가입 메서드
+  Future<void> _signupWithEmailPassword() async {
+    try {
+      final auth = FirebaseAuth.instance;
+      UserCredential userCredential = await auth.createUserWithEmailAndPassword(
+        email: signupEmailController.text.trim(),
+        password: signupPasswordController.text.trim(),
+      );
+
+      User? user = userCredential.user;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('회원가입이 완료되었습니다. 이메일 인증 메일을 확인해주세요.')),
+        );
+      }
+      _switchToPage(0); // 로그인 페이지로 이동
+    } catch (e) {
+      setState(() {
+        signupEmailError = '회원가입에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
+      });
+    }
+  }
+
+  /// Firebase 로그인 메서드
+  Future<void> _loginWithEmailPassword() async {
+    try {
+      final auth = FirebaseAuth.instance;
+      UserCredential userCredential = await auth.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+      User? user = userCredential.user;
+      if (user != null) {
+        if (user.emailVerified) {
+          // 인증된 사용자
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage()),
+          );
+        } else {
+          // 이메일 인증 필요
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('이메일 인증이 필요합니다. 이메일을 확인해주세요.')),
+          );
+          await auth.signOut(); // 인증되지 않은 사용자 로그아웃 처리
+        }
+      }
+    } catch (e) {
+      setState(() {
+        emailError = '로그인에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.';
+      });
+    }
   }
 
   void _validateSignupPassword() {
@@ -81,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: screenHeight * 0.1), // 최상단 여백 조정
+              SizedBox(height: screenHeight * 0.1),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -116,12 +166,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   Flexible(
                     flex: 1,
                     child: Transform.translate(
-                      offset: Offset(20, -10), // 오른쪽으로 10, 위로 -10 이동
+                      offset: Offset(20, -10),
                       child: Container(
                         alignment: Alignment.topRight,
                         child: Image.asset(
                           'assets/images/image_6.png',
-                          width: screenWidth * 0.35, // 크기를 35%로 키움
+                          width: screenWidth * 0.35,
                           height: screenWidth * 0.35,
                           fit: BoxFit.contain,
                         ),
@@ -140,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 1,
                 ),
               ),
-              SizedBox(height: screenHeight * 0.03), // 추가 UI 요소와의 간격 조정
+              SizedBox(height: screenHeight * 0.03),
               Row(
                 children: [
                   GestureDetector(
@@ -198,22 +248,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (isLoginSelected) {
-                      _validateLogin();
-                     // if (studentIdError == null && passwordError == null) { 잠시 기능 구현때문에 꺼놓음
-                        //if () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => HomePage()),
-                        );
-                      //}
+                      // 로그인 버튼 클릭 시
+                      _loginWithEmailPassword();
                     } else {
+                      // 회원가입 버튼 클릭 시
                       _validateSignupPassword();
                       _validateConfirmPassword();
                       if (signupPasswordError == null && confirmPasswordError == null) {
-                        // 회원가입 완료 후 동작 추가
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => HomePage()),
+                        _signupWithEmailPassword();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('회원등록이 완료되었습니다. 이메일 인증 메일을 확인해주세요.')),
                         );
                       }
                     }
@@ -251,10 +295,10 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          controller: studentIdController,
+          controller: emailController,
           decoration: InputDecoration(
-            labelText: '학번',
-            errorText: studentIdError,
+            labelText: '학교 이메일',
+            errorText: emailError,
           ),
         ),
         SizedBox(height: screenHeight * 0.01),
@@ -285,10 +329,10 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          controller: signupStudentIdController,
+          controller: signupEmailController,
           decoration: InputDecoration(
-            labelText: '학번',
-            errorText: signupStudentIdError,
+            labelText: '학교 이메일',
+            errorText: signupEmailError,
           ),
         ),
         SizedBox(height: screenHeight * 0.01),
