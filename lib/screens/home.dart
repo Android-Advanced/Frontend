@@ -20,7 +20,7 @@ class _HomeState extends State<Home> {
     datas = [
       {
         "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
+        "title": "샌드위치 팝니다2222",
         "price": "3000",
         "likes": "2"
       },
@@ -59,7 +59,7 @@ class _HomeState extends State<Home> {
           Icon(Icons.menu), // Menu icon
           SizedBox(width: 10), // Add spacing
           Image.asset(
-            'assets/images/상상부기.jpg',
+            'assets/images/bugi2.png',
             width: 40,
             height: 40,
           ), // Add image

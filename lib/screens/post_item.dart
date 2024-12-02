@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PostItemScreen extends StatefulWidget {
   @override
@@ -6,11 +7,33 @@ class PostItemScreen extends StatefulWidget {
 }
 
 class _PostItemScreenState extends State<PostItemScreen> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   List<String> selectedCategories = [];
 
   final List<String> allCategories = [
     '맛집 탐방', '전자제품', '건강', '스포츠', '책', '운동', '중고차', '가구', '도서', '식물', '상품권'
   ];
+
+  // Firestore에 데이터 저장
+  void _addItemToFirestore() async {
+    final docRef = FirebaseFirestore.instance.collection('items').doc(); // Firestore 컬렉션과 문서 ID 생성
+
+    await docRef.set({
+      'image': 'https://image.made-in-china.com/202f0j00gCoYVfNWalqT/Newly-Spot-Mobile-Phone-M90-Water-Drop-Large-Screen-Fingerprint-Smartphone.webp', // 임시 이미지 URL
+      'title': _titleController.text, // 제목 입력값
+      'price': _priceController.text, // 가격 입력값
+      'description': _descriptionController.text, // 설명 입력값
+      'categories': selectedCategories, // 선택된 카테고리 리스트
+      'userId': 'exampleUserId', // 로그인된 사용자 ID (실제 앱에서는 Authentication에서 가져옴)
+      'hansungPoint' : 'examplehansungPoint',
+      'createdAt': FieldValue.serverTimestamp(), // Firestore 서버 타임스탬프
+    });
+
+    // 저장 완료 후 이전 화면으로 이동
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +90,7 @@ class _PostItemScreenState extends State<PostItemScreen> {
             ),
             SizedBox(height: 16),
             TextField(
+              controller: _titleController,
               decoration: InputDecoration(
                 alignLabelWithHint: true, // Label과 Hint를 정렬
                 labelText: '제목', // 설명을 Label로
@@ -90,6 +114,7 @@ class _PostItemScreenState extends State<PostItemScreen> {
             ),
             SizedBox(height: 16),
             TextField(
+              controller: _priceController,
               decoration: InputDecoration(
                 alignLabelWithHint: true, // Label과 Hint를 정렬
                 labelText: '가격', // 설명을 Label로
@@ -113,6 +138,7 @@ class _PostItemScreenState extends State<PostItemScreen> {
             ),
             SizedBox(height: 16),
             TextField(
+              controller: _descriptionController,
               decoration: InputDecoration(
                 alignLabelWithHint: true, // Label과 Hint를 정렬
                 labelText: '거래할 물건을 상세하게 설명해주세요', // 설명을 Label로
@@ -240,6 +266,8 @@ class _PostItemScreenState extends State<PostItemScreen> {
             ),
             TextButton(
               onPressed: () {
+                // OK 버튼 클릭 시 Firestore에 데이터 저장
+                _addItemToFirestore();
                 Navigator.pop(context); // OK 버튼 클릭 시 팝업 닫기
                 // 등록 로직 추가 가능
               },
