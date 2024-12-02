@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PostItemScreen extends StatefulWidget {
   @override
@@ -18,6 +19,19 @@ class _PostItemScreenState extends State<PostItemScreen> {
 
   // Firestore에 데이터 저장
   void _addItemToFirestore() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      print('사용자가 로그인되어 있지 않습니다.');
+      return;
+    }
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+    if (!userDoc.exists) {
+      print('사용자 정보를 찾을 수 없습니다.');
+      return;
+    }
+
     final docRef = FirebaseFirestore.instance.collection('items').doc(); // Firestore 컬렉션과 문서 ID 생성
 
     await docRef.set({
@@ -26,11 +40,11 @@ class _PostItemScreenState extends State<PostItemScreen> {
       'price': _priceController.text, // 가격 입력값
       'description': _descriptionController.text, // 설명 입력값
       'categories': selectedCategories, // 선택된 카테고리 리스트
-      'userId': 'exampleUserId', // 로그인된 사용자 ID (실제 앱에서는 Authentication에서 가져옴)
-      'hansungPoint' : 'examplehansungPoint',
+      'userId': user.uid, // 로그인된 사용자 ID
       'createdAt': FieldValue.serverTimestamp(), // Firestore 서버 타임스탬프
     });
 
+    print('상품이 성공적으로 등록되었습니다!');
     // 저장 완료 후 이전 화면으로 이동
     Navigator.pop(context);
   }
