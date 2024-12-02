@@ -108,8 +108,8 @@ class _EditProfileState extends State<EditProfile> {
   }
 
   Widget _profilePictureSection() {
-    return Stack(
-      alignment: Alignment.center,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center, // Center the Row contents
       children: [
         CircleAvatar(
           radius: 50,
@@ -125,30 +125,27 @@ class _EditProfileState extends State<EditProfile> {
           )
               : null,
         ),
-        Positioned(
-          right: 0,
-          child: ElevatedButton(
-            onPressed: _changeProfilePicture,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF2657A1),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
-              ),
+        SizedBox(width: 20), // Add spacing between the avatar and the button
+        ElevatedButton(
+          onPressed: _changeProfilePicture,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF2657A1),
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5),
             ),
-            child: Text(
-              "사진 변경",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white,
-              ),
+          ),
+          child: Text(
+            "사진 변경",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white,
             ),
           ),
         ),
       ],
     );
   }
-
   Widget _categoryChips() {
     return Wrap(
       spacing: 10,
