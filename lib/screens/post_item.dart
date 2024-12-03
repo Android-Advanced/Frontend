@@ -42,6 +42,7 @@ class _PostItemScreenState extends State<PostItemScreen> {
       'categories': selectedCategories, // 선택된 카테고리 리스트
       'userId': user.uid, // 로그인된 사용자 ID
       'createdAt': FieldValue.serverTimestamp(), // Firestore 서버 타임스탬프
+      'likes':"0",
     });
 
     print('상품이 성공적으로 등록되었습니다!');
