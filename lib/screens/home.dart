@@ -3,6 +3,7 @@ import './search.dart';
 import './notification.dart';
 import './post.dart';
 import './post_item.dart'; // Import the new file
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -17,39 +18,34 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    datas = [
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다2222",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "아이폰 13프로맥스",
-        "price": "1300000",
-        "likes": "15"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "커피머신",
-        "price": "150000",
-        "likes": "1"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }
-    ];
+    _fetchItemsFromFirestore();
   }
+
+
+  Future<void> _fetchItemsFromFirestore() async {
+    try {
+      final QuerySnapshot snapshot =
+      await FirebaseFirestore.instance.collection('items').get();
+
+      final List<Map<String, String>> loadedItems = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          "image": (data['image'] ?? '').toString(),
+          "title": (data['title'] ?? '').toString(),
+          "price": (data['price'] ?? '').toString(),
+          "likes": "0", // 기본값
+        };
+      }).toList();
+
+      setState(() {
+        datas = loadedItems;
+      });
+    } catch (e) {
+      print('Firestore 데이터를 불러오는 중 오류 발생: $e');
+    }
+  }
+
+
 
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
@@ -89,7 +85,9 @@ class _HomeState extends State<Home> {
   }
 
   Widget _bodyWidget() {
-    return ListView.separated(
+    return RefreshIndicator(
+        onRefresh: _fetchItemsFromFirestore, // 새로고침 시 호출될 함수
+        child: ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       itemBuilder: (BuildContext _context, int index) {
         return GestureDetector(
@@ -111,6 +109,10 @@ class _HomeState extends State<Home> {
                     datas[index]["image"]!,
                     width: 100,
                     height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.error, size: 50); // 이미지 로드 실패 시 아이콘 표시
+                    },
                   ),
                 ),
                 Expanded(
@@ -154,6 +156,7 @@ class _HomeState extends State<Home> {
           color: Colors.black,
         );
       },
+    ),
     );
   }
 
