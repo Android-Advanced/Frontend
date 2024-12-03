@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Product extends StatefulWidget {
   const Product({super.key});
@@ -8,73 +10,56 @@ class Product extends StatefulWidget {
 }
 
 class _ProductState extends State<Product> {
-  List<Map<String, String>> datas = [];
+  List<Map<String, dynamic>> ongoingItems = [];
+  List<Map<String, dynamic>> completedItems = [];
 
   @override
   void initState() {
     super.initState();
-    datas = [
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "아이폰 13프로맥스",
-        "price": "1300000",
-        "likes": "15"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "커피머신",
-        "price": "150000",
-        "likes": "1"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }, {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "커피머신",
-        "price": "150000",
-        "likes": "1"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }, {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }
-    ];
+    _fetchMyItems();
   }
 
+  Future<void> _fetchMyItems() async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        throw Exception("로그인한 사용자가 없습니다.");
+      }
+
+      // Firestore에서 내 상품 가져오기
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('items')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      List<Map<String, dynamic>> ongoing = [];
+      List<Map<String, dynamic>> completed = [];
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final item = {
+          "title": data["title"],
+          "price": data["price"].toString(),
+          "image": data["image"],
+          "buyerId": data["buyerId"] ?? "",
+        };
+
+        if (item["buyerId"].isEmpty) {
+          ongoing.add(item); // 거래 진행 중
+        } else {
+          completed.add(item); // 거래 완료
+        }
+      }
+
+      setState(() {
+        ongoingItems = ongoing;
+        completedItems = completed;
+      });
+    } catch (e) {
+      print("데이터를 가져오는 중 오류 발생: $e");
+    }
+  }
 
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
@@ -82,11 +67,11 @@ class _ProductState extends State<Product> {
         "내가 등록한 상품",
         style: TextStyle(
           color: Colors.black,
-          fontWeight: FontWeight.bold, // Make the text bold
+          fontWeight: FontWeight.bold,
         ),
       ),
       backgroundColor: Colors.white,
-      centerTitle: true, // Center the title
+      centerTitle: true,
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.of(context).pop(),
@@ -95,82 +80,74 @@ class _ProductState extends State<Product> {
     );
   }
 
-
-  String calcStringToWon(String priceString){
-    return "원";
-  }
-  Widget _bodyWidget() {
-    return ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        itemBuilder: (BuildContext _context, int index) {
-          //리스트 클릭 페이지 전환
-          return GestureDetector(
-              onTap: (){
-                Navigator.push(context, MaterialPageRoute(builder: (BuildContext){
-                  return Container();
-                }));
-
-                print(datas[index]["title"]);
-              },
-              //여기까지
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.all(Radius.circular(30)),
-                      child: Image.asset(
-                        datas[index]["image"]!,
-                        width: 100,
-                        height: 100,
-                      ),
-                    ),
-                    Expanded(
-                      child:Container(
-                        height: 100,
-                        padding: const EdgeInsets.only(left: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(datas[index]["title"]!),
-                            Text(
-                              datas[index]["price"]! + "원",
-                              style: TextStyle(
-                                color: Color(0xFF0E3672), // 텍스트 색상을 파란색으로 설정
-                              ),
-                            ),
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Icon(Icons.favorite, color: Colors.red), // 하트 아이콘 추가
-                                  SizedBox(width: 5), // 아이콘과 텍스트 간격
-                                  Text(datas[index]["likes"]!), // 좋아요 수 표시
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+  Widget _buildItemList(String title, List<Map<String, dynamic>> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            title,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => Divider(),
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return ListTile(
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: Image.network(
+                  item["image"],
+                  width: 50,
+                  height: 50,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.image_not_supported,
+                    color: Colors.grey,
+                  ),
                 ),
+              ),
+              title: Text(item["title"]),
+              subtitle: Text("${item["price"]}원"),
+              trailing: item["buyerId"].isEmpty
+                  ? Text(
+                "거래 중",
+                style: TextStyle(color: Colors.orange),
               )
-          );
-        },
-        itemCount: 10,
-
-        separatorBuilder: (BuildContext _context, int index) {
-          return Container(height: 1, color: Colors.black,);
-        }
+                  : Text(
+                "거래 완료",
+                style: TextStyle(color: Colors.green),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appbarWidget(),
-      body: _bodyWidget(),
+      body: ongoingItems.isEmpty && completedItems.isEmpty
+          ? Center(
+        child: Text("등록된 상품이 없습니다."),
+      )
+          : SingleChildScrollView(
+        child: Column(
+          children: [
+            if (ongoingItems.isNotEmpty)
+              _buildItemList("거래 진행 중", ongoingItems),
+            if (completedItems.isNotEmpty)
+              _buildItemList("거래 완료", completedItems),
+          ],
+        ),
+      ),
     );
   }
 }
