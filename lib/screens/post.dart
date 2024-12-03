@@ -1,6 +1,53 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'chatscreen.dart';
+class Post extends StatefulWidget {
+  //final String itemId; // 게시글 ID
 
-class Post extends StatelessWidget {
+ // Post({required this.itemId});
+
+  @override
+  _PostState createState() => _PostState();
+}
+
+class _PostState extends State<Post> {
+  String? buyerId; // 현재 로그인한 사용자의 ID
+  String? profileImage; // 로그인한 사용자의 프로필 이미지
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCurrentUserData(); // Firebase Authentication 및 Firestore 데이터 가져오기
+  }
+
+  Future<void> fetchCurrentUserData() async {
+    try {
+      // Firebase Authentication에서 현재 로그인한 사용자의 UID 가져오기
+      User? currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser != null) {
+        buyerId = currentUser.uid; // 현재 로그인한 사용자의 UID
+
+        // Firestore에서 해당 사용자의 profileImage 가져오기
+        DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(buyerId)
+            .get();
+
+        if (userSnapshot.exists) {
+          final userData = userSnapshot.data() as Map<String, dynamic>;
+          setState(() {
+            profileImage = userData['profileImage'] ?? ''; // 프로필 이미지 저장
+          });
+        }
+      } else {
+        print('사용자가 로그인되어 있지 않습니다.');
+      }
+    } catch (e) {
+      print('데이터 가져오기 중 오류 발생: $e');
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,7 +131,19 @@ class Post extends StatelessWidget {
                     Spacer(),
                     ElevatedButton(
                       onPressed: () {
-                        // 채팅 기능
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                                chatRoomId: "test1", // Firestore 채팅방 ID
+                                name: "요이키", // 대화 상대 이름
+                                temperature: "29.1H",
+                                product: "아이폰 13프로맥스 팝니다",
+                                price:"1300000",
+                                productImage:profileImage!,
+                            ),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
