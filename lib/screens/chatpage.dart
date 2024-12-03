@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'chatscreen.dart'; // ChatScreen 파일을 import (경로는 프로젝트에 따라 다를 수 있음)
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth 추가
+
 final FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-
+final FirebaseAuth _auth = FirebaseAuth.instance; // Firebase Auth 인스턴스
 
 class ChatPage extends StatefulWidget {
   @override
@@ -13,13 +14,23 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   int _selectedIndex = 2; // 초기 선택 탭 (채팅 탭)
 
+  // 현재 로그인된 사용자 UID 가져오기
+  String? getCurrentUserId() {
+    final currentUser = _auth.currentUser;
+    return currentUser?.uid;
+  }
 
+  // 현재 사용자와 관련된 채팅방만 가져오는 Firestore 쿼리
+  Stream<QuerySnapshot> getUserChatRooms() {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return Stream.empty(); // 사용자 정보가 없으면 빈 스트림 반환
+    }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    // TODO: 원하는 페이지로 전환 로직 추가
+    return firestore
+        .collection('chatrooms')
+        .where('participants', arrayContains: userId) // 필터링 조건
+        .snapshots();
   }
 
   @override
@@ -74,13 +85,22 @@ class _ChatPageState extends State<ChatPage> {
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: firestore.collection('chatrooms').snapshots(),
+              stream: getUserChatRooms(), // 필터링된 채팅방 스트림 사용
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
                 }
 
                 final chatRooms = snapshot.data!.docs;
+
+                if (chatRooms.isEmpty) {
+                  return Center(
+                    child: Text(
+                      '진행 중인 채팅방이 없습니다.',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  );
+                }
 
                 return ListView.separated(
                   itemCount: chatRooms.length,
@@ -151,10 +171,8 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
           ),
-
         ],
       ),
-
     );
   }
 }
