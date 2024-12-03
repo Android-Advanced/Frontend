@@ -130,11 +130,13 @@ class _ChatPageState extends State<ChatPage> {
                       )
                           : null,
                       onTap: () {
+                        print('Navigating to ChatScreen with data: ${chat['chatRoomId']}');
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(
-                              title: chat['name'],
+                              chatRoomId: chat['chatRoomId'], // Firestore에서 가져온 데이터
+                              name: chat['name'],
                               temperature: chat['temperature'],
                               product: chat['product'],
                               price: chat['price'],
