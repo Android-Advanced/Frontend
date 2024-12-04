@@ -33,10 +33,12 @@ class _HomeState extends State<Home> {
           "image": (data['image'] ?? '').toString(),
           "title": (data['title'] ?? '').toString(),
           "price": (data['price'] ?? '').toString(),
+          "userId": (data['userId'] ?? '').toString(),
           "likes": "0", // 기본값
           "description": (data['description'] ?? '').toString(),
           "displayName": (data['displayName'] ?? '').toString(),
           "createdAt": (data['displayName'] ?? '').toString(),
+
         };
       }).toList();
 
