@@ -43,19 +43,39 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_messageController.text.trim().isNotEmpty) {
       final currentUser = _auth.currentUser;
       if (currentUser == null) return;
-
-      await _firestore
+      final String messageText = _messageController.text.trim();
+      final messageDoc = await _firestore
           .collection('chatrooms')
           .doc(widget.chatRoomId)
           .collection('messages')
           .add({
-        'message': _messageController.text,
+        'message':messageText,
         'senderId': currentUser.uid,
         'senderName': currentUser.displayName ?? 'Anonymous',
         'timestamp': FieldValue.serverTimestamp(),
+        'isRead' : false,
+      });
+      await _firestore
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .update({
+        'message': messageText, // 마지막 메시지 내용
+
       });
 
       _messageController.clear();
+    }
+  }
+  Future<void> markMessageAsRead(String messageId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .collection('messages')
+          .doc(messageId)
+          .update({'isRead': true});
+    } catch (e) {
+      print("Error marking message as read: $e");
     }
   }
 
@@ -177,6 +197,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     var message = messages[index];
                     bool isMe =
                         message['senderId'] == _auth.currentUser?.uid;
+                    if (!isMe && !(message['isRead'] ?? false)) {
+                      markMessageAsRead(message.id);
+                    }
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
