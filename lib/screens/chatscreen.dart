@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatScreen extends StatefulWidget {
-  final String title; // 대화 상대 이름
+  final String chatRoomId; // Firestore 채팅방 ID
+  final String name; // 대화 상대 이름
   final String temperature; // 온도
   final String product; // 상품 정보
   final String price; // 상품 가격
   final String productImage; // 상품 이미지
 
   ChatScreen({
-    required this.title,
+    required this.chatRoomId,
+    required this.name,
     required this.temperature,
     required this.product,
     required this.price,
@@ -20,80 +24,38 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  List<Map<String, dynamic>> messages = [
-    {'isMe': false, 'message': '사실건가요?', 'time': '오후 8:32'},
-    {'isMe': true, 'message': '알아서 할게요', 'time': '오후 8:42'},
-    {'isMe': false, 'message': '시험 힘들어', 'time': '오후 8:55'},
-    {'isMe': true, 'message': '알아서 할게요', 'time': '오후 8:42'},
-    {'isMe': false, 'message': '시험 힘들어', 'time': '오후 8:55'},
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final TextEditingController _messageController = TextEditingController();
 
-  TextEditingController _messageController = TextEditingController();
-
-  void _sendMessage() {
-    if (_messageController.text.trim().isNotEmpty) {
-      setState(() {
-        messages.add({
-          'isMe': true,
-          'message': _messageController.text,
-          'time': '오후 9:00', // 실제 프로젝트에서는 현재 시간 사용
-        });
-        _messageController.clear();
-      });
-    }
+  // Firestore에서 메시지를 가져오는 스트림
+  Stream<QuerySnapshot> getChatMessages() {
+    return _firestore
+        .collection('chatrooms')
+        .doc(widget.chatRoomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots();
   }
 
-  void _handleMenuItem(String value) {
-    if (value == 'exit') {
-      // "채팅방 나가기" 경고 다이얼로그
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('경고'),
-          content: Text('채팅방에서 나가면 기록이 삭제됩니다. 정말 나가시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // 다이얼로그 닫기
-              },
-              child: Text('취소'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // 다이얼로그 닫기
-                Navigator.pop(context); // 채팅방 나가기
-              },
-              child: Text('확인'),
-            ),
-          ],
-        ),
-      );
-    } else if (value == 'complete') {
-      // "거래 완료하기" 경고 다이얼로그
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('경고'),
-          content: Text('거래 완료 확인 시, 거래가 정상적으로 종료됩니다. 거래가 완료되었습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('취소'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('거래가 완료되었습니다.')),
-                );
-              },
-              child: Text('확인'),
-            ),
-          ],
-        ),
-      );
+  // Firestore에 메시지 추가
+  void _sendMessage() async {
+    if (_messageController.text.trim().isNotEmpty) {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) return;
+
+      await _firestore
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .collection('messages')
+          .add({
+        'message': _messageController.text,
+        'senderId': currentUser.uid,
+        'senderName': currentUser.displayName ?? 'Anonymous',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      _messageController.clear();
     }
   }
 
@@ -105,7 +67,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true, // 제목 중앙 정렬
+        centerTitle: true,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
@@ -113,10 +75,10 @@ class _ChatScreenState extends State<ChatScreen> {
           },
         ),
         title: Row(
-          mainAxisSize: MainAxisSize.min, // 중앙에 배치되도록 설정
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.title,
+              widget.name,
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 18,
@@ -134,22 +96,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: Colors.black),
-            onSelected: _handleMenuItem,
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'exit',
-                child: Text('채팅방 나가기'),
-              ),
-              PopupMenuItem(
-                value: 'complete',
-                child: Text('거래 완료하기'),
-              ),
-            ],
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -185,7 +131,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               fontSize: 14,
                             ),
                           ),
-                          SizedBox(width: 8), // "판매중"과 상품명 사이 간격
+                          SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               widget.product,
@@ -193,7 +139,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 color: Colors.black,
                                 fontSize: 14,
                               ),
-                              overflow: TextOverflow.ellipsis, // 긴 텍스트 처리
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -215,72 +161,81 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           // 메시지 리스트 섹션
           Expanded(
-            child: ListView.builder(
-              itemCount: messages.length,
-              reverse: false,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  child: Row(
-                    mainAxisAlignment: message['isMe']
-                        ? MainAxisAlignment.end
-                        : MainAxisAlignment.start,
-                    children: [
-                      if (!message['isMe']) ...[
-                        CircleAvatar(
-                          radius: 16,
-                          child: Icon(Icons.person, size: 16),
-                        ),
-                        SizedBox(width: 8),
-                      ],
-                      Flexible(
-                        child: Container(
-                          constraints: BoxConstraints(
-                              maxWidth: screenWidth * 0.6),
-                          padding: EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: message['isMe']
-                                ? Color(0xFFe8f0fe)
-                                : Color(0xFFF1F1F1),
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(12),
-                              topRight: Radius.circular(12),
-                              bottomLeft: message['isMe']
-                                  ? Radius.circular(12)
-                                  : Radius.circular(0),
-                              bottomRight: message['isMe']
-                                  ? Radius.circular(0)
-                                  : Radius.circular(12),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: getChatMessages(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                var messages = snapshot.data!.docs;
+
+                return ListView.builder(
+                  itemCount: messages.length,
+                  reverse: false,
+                  itemBuilder: (context, index) {
+                    var message = messages[index];
+                    bool isMe =
+                        message['senderId'] == _auth.currentUser?.uid;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      child: Row(
+                        mainAxisAlignment: isMe
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
+                        children: [
+                          if (!isMe) ...[
+                            CircleAvatar(
+                              radius: 16,
+                              child: Icon(Icons.person, size: 16),
+                            ),
+                            SizedBox(width: 8),
+                          ],
+                          Flexible(
+                            child: Container(
+                              constraints: BoxConstraints(
+                                  maxWidth: screenWidth * 0.6),
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isMe
+                                    ? Color(0xFFe8f0fe)
+                                    : Color(0xFFF1F1F1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: isMe
+                                    ? CrossAxisAlignment.end
+                                    : CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    message['message'],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  Text(
+                                    message['timestamp'] != null
+                                        ? (message['timestamp'] as Timestamp)
+                                        .toDate()
+                                        .toString()
+                                        : '',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: message['isMe']
-                                ? CrossAxisAlignment.end
-                                : CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                message['message'],
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Text(
-                                message['time'],
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),

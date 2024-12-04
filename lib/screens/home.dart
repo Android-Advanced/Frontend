@@ -34,6 +34,9 @@ class _HomeState extends State<Home> {
           "title": (data['title'] ?? '').toString(),
           "price": (data['price'] ?? '').toString(),
           "likes": "0", // 기본값
+          "description": (data['description'] ?? '').toString(),
+          "displayName": (data['displayName'] ?? '').toString(),
+          "createdAt": (data['displayName'] ?? '').toString(),
         };
       }).toList();
 
@@ -86,77 +89,80 @@ class _HomeState extends State<Home> {
 
   Widget _bodyWidget() {
     return RefreshIndicator(
-        onRefresh: _fetchItemsFromFirestore, // 새로고침 시 호출될 함수
-        child: ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      itemBuilder: (BuildContext _context, int index) {
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => Post(),
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.all(Radius.circular(10)),
-                  child: Image.asset(
-                    datas[index]["image"]!,
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(Icons.error, size: 50); // 이미지 로드 실패 시 아이콘 표시
-                    },
+      onRefresh: _fetchItemsFromFirestore, // 새로고침 시 호출될 함수
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemBuilder: (BuildContext _context, int index) {
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Post(
+                    itemData: datas[index], // 선택된 데이터를 전달
+
                   ),
                 ),
-                Expanded(
-                  child: Container(
-                    height: 100,
-                    padding: const EdgeInsets.only(left: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(datas[index]["title"]!),
-                        Text(
-                          datas[index]["price"]! + "원",
-                          style: TextStyle(
-                            color: Color(0xFF0E3672),
-                          ),
-                        ),
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Icon(Icons.favorite, color: Colors.red),
-                              SizedBox(width: 5),
-                              Text(datas[index]["likes"]!),
-                            ],
-                          ),
-                        ),
-                      ],
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                    child: Image.asset(
+                      datas[index]["image"]!,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(Icons.error, size: 50); // 이미지 로드 실패 시 아이콘 표시
+                      },
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Container(
+                      height: 100,
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(datas[index]["title"]!),
+                          Text(
+                            datas[index]["price"]! + "원",
+                            style: TextStyle(
+                              color: Color(0xFF0E3672),
+                            ),
+                          ),
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Icon(Icons.favorite, color: Colors.red),
+                                SizedBox(width: 5),
+                                Text(datas[index]["likes"]!),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-      itemCount: datas.length,
-      separatorBuilder: (BuildContext _context, int index) {
-        return Container(
-          height: 1,
-          color: Colors.black,
-        );
-      },
-    ),
+          );
+        },
+        itemCount: datas.length,
+        separatorBuilder: (BuildContext _context, int index) {
+          return Container(
+            height: 1,
+            color: Colors.black,
+          );
+        },
+      ),
     );
   }
 
