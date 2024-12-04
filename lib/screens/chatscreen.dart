@@ -37,6 +37,49 @@ class _ChatScreenState extends State<ChatScreen> {
         .orderBy('timestamp', descending: false)
         .snapshots();
   }
+  void _completeTransaction() async {
+    final confirmation = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('거래 완료하기'),
+        content: Text('이 거래를 완료 처리하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('완료'),
+          ),
+        ],
+      ),
+    );
+
+
+  }
+
+  void _leaveChatRoom() async {
+    final confirmation = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('채팅방 나가기'),
+        content: Text('정말로 이 채팅방을 나가시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('나가기'),
+          ),
+        ],
+      ),
+    );
+
+
+  }
 
   // Firestore에 메시지 추가
   void _sendMessage() async {
@@ -124,6 +167,28 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: Colors.black),
+            onSelected: (String result) {
+              if (result == 'leave') {
+                _leaveChatRoom();
+              } else if (result == 'complete') {
+                _completeTransaction();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'leave',
+                child: Text('채팅방 나가기'),
+              ),
+              PopupMenuItem<String>(
+                value: 'complete',
+                child: Text('거래 완료하기'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
