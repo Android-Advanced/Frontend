@@ -54,13 +54,15 @@ class _ChatScreenState extends State<ChatScreen> {
         'senderName': currentUser.displayName ?? 'Anonymous',
         'timestamp': FieldValue.serverTimestamp(),
         'isRead' : false,
+
       });
       await _firestore
           .collection('chatrooms')
           .doc(widget.chatRoomId)
           .update({
         'message': messageText, // 마지막 메시지 내용
-
+        'senderId' : currentUser.uid,
+        'isRead' : false,
       });
 
       _messageController.clear();
@@ -74,6 +76,12 @@ class _ChatScreenState extends State<ChatScreen> {
           .collection('messages')
           .doc(messageId)
           .update({'isRead': true});
+      await FirebaseFirestore.instance
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .update({
+        'isRead': true,
+      });
     } catch (e) {
       print("Error marking message as read: $e");
     }

@@ -107,6 +107,8 @@ class _ChatPageState extends State<ChatPage> {
                   separatorBuilder: (context, index) => Divider(height: 1),
                   itemBuilder: (context, index) {
                     final chat = chatRooms[index].data() as Map<String, dynamic>;
+                    final String? currentUserId = getCurrentUserId();
+                    final bool isUnreadMessage = chat['isRead'] == false && chat['senderId'] != currentUserId;
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundImage: NetworkImage(chat['profileImage']),

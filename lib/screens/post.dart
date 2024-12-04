@@ -115,6 +115,8 @@ class Post extends StatelessWidget {
                           'profileImage': currentUser.photoURL ?? '', // 현재 사용자 프로필 이미지
                           'time': '1주전', // 현재 시간
                           'temperature': '37.2°C', // 더미 데이터
+                          'senderId' : '',
+                          'isRead' : false,
                         }, SetOptions(merge: true)); // 기존 데이터 병합
 
                         // 채팅 화면으로 이동
