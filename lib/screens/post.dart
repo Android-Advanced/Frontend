@@ -1,53 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'chatscreen.dart';
-class Post extends StatefulWidget {
-  //final String itemId; // 게시글 ID
 
- // Post({required this.itemId});
+class Post extends StatelessWidget {
+  final Map<String, String> itemData;
 
-  @override
-  _PostState createState() => _PostState();
-}
-
-class _PostState extends State<Post> {
-  String? buyerId; // 현재 로그인한 사용자의 ID
-  String? profileImage; // 로그인한 사용자의 프로필 이미지
-
-  @override
-  void initState() {
-    super.initState();
-    fetchCurrentUserData(); // Firebase Authentication 및 Firestore 데이터 가져오기
-  }
-
-  Future<void> fetchCurrentUserData() async {
-    try {
-      // Firebase Authentication에서 현재 로그인한 사용자의 UID 가져오기
-      User? currentUser = FirebaseAuth.instance.currentUser;
-
-      if (currentUser != null) {
-        buyerId = currentUser.uid; // 현재 로그인한 사용자의 UID
-
-        // Firestore에서 해당 사용자의 profileImage 가져오기
-        DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(buyerId)
-            .get();
-
-        if (userSnapshot.exists) {
-          final userData = userSnapshot.data() as Map<String, dynamic>;
-          setState(() {
-            profileImage = userData['profileImage'] ?? ''; // 프로필 이미지 저장
-          });
-        }
-      } else {
-        print('사용자가 로그인되어 있지 않습니다.');
-      }
-    } catch (e) {
-      print('데이터 가져오기 중 오류 발생: $e');
-    }
-  }
+  const Post({super.key, required this.itemData});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,9 +24,12 @@ class _PostState extends State<Post> {
             // 이미지 섹션
             Center(
               child: Image.network(
-                'https://image.made-in-china.com/202f0j00gCoYVfNWalqT/Newly-Spot-Mobile-Phone-M90-Water-Drop-Large-Screen-Fingerprint-Smartphone.webp', // 실제 이미지 URL로 변경
-                height: 250, // 원하는 크기로 설정
+                itemData['image'] ?? '', // 데이터베이스의 이미지 URL
+                height: 250,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(Icons.error, size: 50);
+                },
               ),
             ),
             Spacer(), // 이미지와 텍스트 사이에 빈 공간 추가
@@ -84,12 +43,12 @@ class _PostState extends State<Post> {
                     Icon(Icons.account_circle, color: Colors.blue),
                     SizedBox(width: 8),
                     Text(
-                      '한성부기',
+                      itemData['displayName'] ?? '사용자 이름 없음', // 필요한 경우 데이터베이스에서 가져옴
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Spacer(),
                     Text(
-                      '37.2°H / 2시간 전',
+                      '37.2°H / 2시간 전', // 더미 데이터
                       style: TextStyle(color: Colors.blue),
                     ),
                   ],
@@ -97,7 +56,7 @@ class _PostState extends State<Post> {
                 SizedBox(height: 8),
                 // 게시글 제목
                 Text(
-                  '아이폰 13프로맥스 팝니다.',
+                  itemData['title'] ?? '제목 없음',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 4),
@@ -108,7 +67,8 @@ class _PostState extends State<Post> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  '8/31일 해외직구한\n한달도 안된제품 입니다.\n박풀 S급입니다.',
+                  itemData['description'] ??
+                      '해당 제품에 대한 설명이 없습니다.', // 데이터베이스에 추가 필드가 있으면 사용
                   style: TextStyle(fontSize: 14),
                 ),
                 SizedBox(height: 16),
@@ -116,7 +76,7 @@ class _PostState extends State<Post> {
                 Row(
                   children: [
                     Text(
-                      '1,300,000',
+                      '${itemData['price']}원',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -131,19 +91,7 @@ class _PostState extends State<Post> {
                     Spacer(),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(
-                                chatRoomId: "test1", // Firestore 채팅방 ID
-                                name: "요이키", // 대화 상대 이름
-                                temperature: "29.1H",
-                                product: "아이폰 13프로맥스 팝니다",
-                                price:"1300000",
-                                productImage:profileImage!,
-                            ),
-                          ),
-                        );
+                        // 채팅 기능
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,

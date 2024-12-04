@@ -43,6 +43,8 @@ class _PostItemScreenState extends State<PostItemScreen> {
       'userId': user.uid, // 로그인된 사용자 ID
       'createdAt': FieldValue.serverTimestamp(), // Firestore 서버 타임스탬프
       'likes':"0",
+      'displayName' : userDoc['displayName'],
+      'buyerId':"",
     });
 
     print('상품이 성공적으로 등록되었습니다!');
