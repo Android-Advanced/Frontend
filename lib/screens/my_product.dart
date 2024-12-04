@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class Product extends StatefulWidget {
   const Product({super.key});
@@ -17,6 +18,19 @@ class _ProductState extends State<Product> {
   void initState() {
     super.initState();
     _fetchMyItems();
+  }
+
+  Future<String> _convertGsUrlToHttp(String gsUrl) async {
+    try {
+      if (gsUrl.startsWith("gs://")) {
+        final ref = FirebaseStorage.instance.refFromURL(gsUrl);
+        return await ref.getDownloadURL();
+      }
+      return gsUrl; // 이미 HTTP URL인 경우 그대로 반환
+    } catch (e) {
+      print("이미지 URL 변환 오류: $e");
+      return ""; // 오류 발생 시 빈 문자열 반환
+    }
   }
 
   Future<void> _fetchMyItems() async {
@@ -38,10 +52,11 @@ class _ProductState extends State<Product> {
 
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
+        final imageUrl = await _convertGsUrlToHttp(data["image"] ?? "");
         final item = {
           "title": data["title"],
           "price": data["price"].toString(),
-          "image": data["image"],
+          "image": imageUrl,
           "buyerId": data["buyerId"] ?? "",
         };
 
@@ -133,6 +148,7 @@ class _ProductState extends State<Product> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: _appbarWidget(),
       body: ongoingItems.isEmpty && completedItems.isEmpty
           ? Center(

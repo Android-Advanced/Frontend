@@ -14,6 +14,8 @@ class EditProfile extends StatefulWidget {
 
 class _EditProfileState extends State<EditProfile> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   // 중복된 카테고리 제거 ("책" 제거)
   final List<String> categories = [
@@ -49,6 +51,10 @@ class _EditProfileState extends State<EditProfile> {
   }
 
   Future<void> _saveUserData() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       // Firestore에 선택된 카테고리 저장
@@ -57,6 +63,14 @@ class _EditProfileState extends State<EditProfile> {
         'categories': selectedCategories.toList(),
         'profileImage': profileImage,
       });
+
+      if (_passwordController.text.isNotEmpty) {
+        await currentUser.updatePassword(_passwordController.text);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('비밀번호가 성공적으로 변경되었습니다.')),
+        );
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('정보가 성공적으로 저장되었습니다.')),
       );
@@ -195,52 +209,92 @@ class _EditProfileState extends State<EditProfile> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _profilePictureSection(),
-          const SizedBox(height: 20),
-          const Text("이름", style: TextStyle(fontSize: 14, color: Colors.grey)),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey[200],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-              border: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.circular(5),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text("관심 카테고리", style: TextStyle(fontSize: 14, color: Colors.grey)),
-          const SizedBox(height: 10),
-          _categoryChips(),
-          const SizedBox(height: 20),
-          Center(
-            child: ElevatedButton(
-              onPressed: _saveUserData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2657A1),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _profilePictureSection(),
+            const SizedBox(height: 20),
+            const Text("이름", style: TextStyle(fontSize: 14, color: Colors.grey)),
+            TextFormField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey[200],
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide.none,
                   borderRadius: BorderRadius.circular(5),
                 ),
               ),
-              child: const Text(
-                "저장 하기",
-                style: TextStyle(fontSize: 16, color: Colors.white),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "이름을 입력해주세요.";
+                }
+                if (value.length > 16) {
+                  return "영어 16자, 한글 8자 이하로 작성해주세요";
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+            const Text("비밀번호 변경", style: TextStyle(fontSize: 14, color: Colors.grey)),
+            TextFormField(
+              controller: _passwordController,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey[200],
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              obscureText: true,
+              validator: (value) {
+                if (value != null && value.isNotEmpty && value.length < 6) {
+                  return "비밀번호는 6자 이상, 영어 소문자 및 숫자만 포함 가능합니다.";
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+            const Text("관심 카테고리", style: TextStyle(fontSize: 14, color: Colors.grey)),
+            const SizedBox(height: 10),
+            _categoryChips(),
+            const SizedBox(height: 20),
+            Center(
+              child: ElevatedButton(
+                onPressed: _saveUserData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2657A1),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+                child: const Text(
+                  "저장 하기",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: _appbarWidget(), body: _bodyWidget());
+    return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _appbarWidget(),
+        body: _bodyWidget(),
+    );
   }
 }
