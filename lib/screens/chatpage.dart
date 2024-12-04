@@ -108,7 +108,18 @@ class _ChatPageState extends State<ChatPage> {
                   itemBuilder: (context, index) {
                     final chat = chatRooms[index].data() as Map<String, dynamic>;
                     final String? currentUserId = getCurrentUserId();
+                     final List<String> participants = List<String>.from(chat['participants'] as List<dynamic>);
+                    final List<String> names = List<String>.from(chat['name'] as List<dynamic>);
+                    print(participants[0]);
+                    final String? otherUserName;
+
+                    if (participants[0] == currentUserId) {
+                      otherUserName = names[1]; // 0번이 내 아이디와 같으면, 1번 이름
+                    } else {
+                      otherUserName = names[0]; // 1번이 내 아이디와 같으면, 0번 이름
+                    }
                     final bool isUnreadMessage = chat['isRead'] == false && chat['senderId'] != currentUserId;
+
 
                     return ListTile(
                       leading: CircleAvatar(
@@ -117,7 +128,7 @@ class _ChatPageState extends State<ChatPage> {
                       title: Row(
                         children: [
                           Text(
-                            chat['name'],
+                            otherUserName,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -186,7 +197,7 @@ class _ChatPageState extends State<ChatPage> {
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(
                               chatRoomId: chat['chatRoomId'], // Firestore에서 가져온 데이터
-                              name: chat['name'],
+                              name: otherUserName!,
                               temperature: chat['temperature'],
                               product: chat['product'],
                               price: chat['price'],
