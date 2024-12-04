@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mobile_p/screens/review_screen.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 class ChatScreen extends StatefulWidget {
   final String chatRoomId; // Firestore 채팅방 ID
@@ -56,8 +57,42 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
 
+    if (confirmation == true) {
 
+      // 거래 완료 후 리뷰 요청 팝업 표시
+      final reviewConfirmation = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('거래 리뷰 작성'),
+          content: Text('거래 리뷰를 작성하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false), // "아니오"
+              child: Text('아니오'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true), // "네"
+              child: Text('네'),
+            ),
+          ],
+        ),
+      );
+
+      // "네"를 선택하면 리뷰 작성 화면으로 이동
+      if (reviewConfirmation == true) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReviewScreen(
+              chatRoomId: widget.chatRoomId, // productImage 전달
+            ), // 리뷰 작성 화면
+
+          ),
+        );
+      }
+    }
   }
+
 
   void _leaveChatRoom() async {
     final confirmation = await showDialog<bool>(
@@ -87,6 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
       Navigator.pop(context); // Navigate back to the previous screen
     }
   }
+
 
   // Firestore에 메시지 추가
   void _sendMessage() async {
