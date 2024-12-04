@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:visibility_detector/visibility_detector.dart';
 class ChatScreen extends StatefulWidget {
   final String chatRoomId; // Firestore 채팅방 ID
   final String name; // 대화 상대 이름
@@ -195,67 +195,62 @@ class _ChatScreenState extends State<ChatScreen> {
                   reverse: false,
                   itemBuilder: (context, index) {
                     var message = messages[index];
-                    bool isMe =
-                        message['senderId'] == _auth.currentUser?.uid;
-                    if (!isMe && !(message['isRead'] ?? false)) {
-                      markMessageAsRead(message.id);
-                    }
+                    bool isMe = message['senderId'] == _auth.currentUser?.uid;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      child: Row(
-                        mainAxisAlignment: isMe
-                            ? MainAxisAlignment.end
-                            : MainAxisAlignment.start,
-                        children: [
-                          if (!isMe) ...[
-                            CircleAvatar(
-                              radius: 16,
-                              child: Icon(Icons.person, size: 16),
+                    return VisibilityDetector(
+                      key: Key(message.id),
+                      onVisibilityChanged: (visibilityInfo) {
+                        if (visibilityInfo.visibleFraction > 0.5 && !isMe && !(message['isRead'] ?? false)) {
+                          // 메시지가 화면에서 50% 이상 보일 때 읽음 처리
+                          markMessageAsRead(message.id);
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        child: Row(
+                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                          children: [
+                            if (!isMe) ...[
+                              CircleAvatar(
+                                radius: 16,
+                                child: Icon(Icons.person, size: 16),
+                              ),
+                              SizedBox(width: 8),
+                            ],
+                            Flexible(
+                              child: Container(
+                                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.6),
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: isMe ? Color(0xFFe8f0fe) : Color(0xFFF1F1F1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message['message'],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    SizedBox(height: 5),
+                                    Text(
+                                      message['timestamp'] != null
+                                          ? (message['timestamp'] as Timestamp).toDate().toString()
+                                          : '',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            SizedBox(width: 8),
                           ],
-                          Flexible(
-                            child: Container(
-                              constraints: BoxConstraints(
-                                  maxWidth: screenWidth * 0.6),
-                              padding: EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: isMe
-                                    ? Color(0xFFe8f0fe)
-                                    : Color(0xFFF1F1F1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isMe
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    message['message'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  SizedBox(height: 5),
-                                  Text(
-                                    message['timestamp'] != null
-                                        ? (message['timestamp'] as Timestamp)
-                                        .toDate()
-                                        .toString()
-                                        : '',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     );
                   },
