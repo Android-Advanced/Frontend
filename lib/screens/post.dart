@@ -101,11 +101,11 @@ class Post extends StatelessWidget {
                         }
 
                         final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-                        final chatRoomDoc = _firestore.collection('chatrooms').doc(itemData['title'] ?? '제목 없음');
+                        final chatRoomDoc = _firestore.collection('chatrooms').doc('${currentUser.uid}${itemData['userId']}');
 
                         // Firestore 문서 필드 업데이트
                         await chatRoomDoc.set({
-                          'chatRoomId': itemData['title'] ?? '제목 없음', // 채팅방 ID
+                          'chatRoomId': '${currentUser.uid}${itemData['userId']}',
                           'message': '', // 초기 상태에서는 메시지가 비어 있음
                           'name': itemData['displayName'] ?? '사용자 이름 없음', // 대화 상대 이름
                           'participants': [currentUser.uid, itemData['userId'] ?? 'unknown'], // 참가자 목록
