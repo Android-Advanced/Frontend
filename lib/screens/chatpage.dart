@@ -109,6 +109,7 @@ class _ChatPageState extends State<ChatPage> {
                     final chat = chatRooms[index].data() as Map<String, dynamic>;
                     final String? currentUserId = getCurrentUserId();
                     final bool isUnreadMessage = chat['isRead'] == false && chat['senderId'] != currentUserId;
+
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundImage: NetworkImage(chat['profileImage']),
@@ -140,8 +141,9 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                       subtitle: Text(
                         chat['message'],
-                        style: TextStyle(fontSize: 14, color: Colors.black),
+                        style: TextStyle(fontSize: 14, color: Colors.black,fontWeight: isUnreadMessage ? FontWeight.w900 : FontWeight.normal,),
                         overflow: TextOverflow.ellipsis,
+
                       ),
                       trailing: chat['productImage'] != null
                           ? Image.network(
