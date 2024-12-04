@@ -78,7 +78,14 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
 
+    if (confirmation == true) {
+      // Remove user from chat room participants in Firestore
+      await _firestore.collection('chatrooms').doc(widget.chatRoomId).update({
+        'participants': FieldValue.arrayRemove([_auth.currentUser?.uid])
+      });
 
+      Navigator.pop(context); // Navigate back to the previous screen
+    }
   }
 
   // Firestore에 메시지 추가
