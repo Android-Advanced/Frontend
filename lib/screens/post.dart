@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'chatscreen.dart';
 
 class Post extends StatelessWidget {
   final Map<String, String> itemData;
 
   const Post({super.key, required this.itemData});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -21,10 +23,9 @@ class Post extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 이미지 섹션
             Center(
               child: Image.network(
-                itemData['image'] ?? '', // 데이터베이스의 이미지 URL
+                itemData['image'] ?? '',
                 height: 250,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
@@ -32,47 +33,41 @@ class Post extends StatelessWidget {
                 },
               ),
             ),
-            Spacer(), // 이미지와 텍스트 사이에 빈 공간 추가
-            // 아래 텍스트 정보 섹션
+            Spacer(),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 사용자 정보 섹션
                 Row(
                   children: [
                     Icon(Icons.account_circle, color: Colors.blue),
                     SizedBox(width: 8),
                     Text(
-                      itemData['displayName'] ?? '사용자 이름 없음', // 필요한 경우 데이터베이스에서 가져옴
+                      itemData['displayName'] ?? '사용자 이름 없음',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Spacer(),
                     Text(
-                      '37.2°H / 2시간 전', // 더미 데이터
+                      '37.2°H / 2시간 전',
                       style: TextStyle(color: Colors.blue),
                     ),
                   ],
                 ),
                 SizedBox(height: 8),
-                // 게시글 제목
                 Text(
                   itemData['title'] ?? '제목 없음',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 4),
-                // 게시글 세부 정보
                 Text(
                   '디지털기기 · 글올 1일 전',
                   style: TextStyle(color: Colors.grey),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  itemData['description'] ??
-                      '해당 제품에 대한 설명이 없습니다.', // 데이터베이스에 추가 필드가 있으면 사용
+                  itemData['description'] ?? '해당 제품에 대한 설명이 없습니다.',
                   style: TextStyle(fontSize: 14),
                 ),
                 SizedBox(height: 16),
-                // 가격과 채팅 버튼
                 Row(
                   children: [
                     Text(
@@ -91,7 +86,19 @@ class Post extends StatelessWidget {
                     Spacer(),
                     ElevatedButton(
                       onPressed: () {
-                        // 채팅 기능
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              chatRoomId: '${itemData['id']}_chatRoom', // 채팅방 ID
+                              name: itemData['displayName'] ?? '사용자 이름 없음',
+                              temperature: '37.2°C',
+                              product: itemData['title'] ?? '제목 없음',
+                              price: '${itemData['price']}원',
+                              productImage: itemData['image'] ?? '',
+                            ),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
