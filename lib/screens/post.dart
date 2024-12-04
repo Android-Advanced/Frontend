@@ -117,6 +117,7 @@ class Post extends StatelessWidget {
                           'temperature': '37.2°C', // 더미 데이터
                           'senderId' : '',
                           'isRead' : false,
+                          'notReadCount' : 0,
                         }, SetOptions(merge: true)); // 기존 데이터 병합
 
                         // 채팅 화면으로 이동

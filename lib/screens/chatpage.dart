@@ -139,11 +139,37 @@ class _ChatPageState extends State<ChatPage> {
                           ),
                         ],
                       ),
-                      subtitle: Text(
-                        chat['message'],
-                        style: TextStyle(fontSize: 14, color: Colors.black,fontWeight: isUnreadMessage ? FontWeight.w900 : FontWeight.normal,),
-                        overflow: TextOverflow.ellipsis,
-
+                      subtitle: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              chat['message'],
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: isUnreadMessage ? FontWeight.w900 : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (chat['notReadCount'] != null && chat['notReadCount'] > 0 &&  chat['senderId'] != currentUserId)
+                            Container(
+                              margin: EdgeInsets.only(left: 8),
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                chat['notReadCount'].toString(),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       trailing: chat['productImage'] != null
                           ? Image.network(

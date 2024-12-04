@@ -106,6 +106,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'message': messageText, // 마지막 메시지 내용
         'senderId' : currentUser.uid,
         'isRead' : false,
+        'notReadCount': FieldValue.increment(1),
       });
 
       _messageController.clear();
@@ -124,6 +125,7 @@ class _ChatScreenState extends State<ChatScreen> {
           .doc(widget.chatRoomId)
           .update({
         'isRead': true,
+        'notReadCount': 0,
       });
     } catch (e) {
       print("Error marking message as read: $e");
