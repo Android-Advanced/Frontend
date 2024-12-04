@@ -16,6 +16,43 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  String _reviewerName = "User"; // 현재 사용자 이름
+  String _revieweeName = "Seller"; // 판매자 이름
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      // 현재 사용자 이름 가져오기
+      final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+      _reviewerName = userDoc.data()?['displayName'] ?? "User";
+
+      // 판매자 이름 가져오기
+      final chatRoomDoc = await _firestore.collection('chatrooms').doc(widget.chatRoomId).get();
+      if (chatRoomDoc.exists) {
+        final chatRoomData = chatRoomDoc.data();
+        final revieweeUID = chatRoomData?['participants']
+            ?.firstWhere((uid) => uid != currentUser.uid, orElse: () => null);
+
+        if (revieweeUID != null) {
+          final revieweeDoc = await _firestore.collection('users').doc(revieweeUID).get();
+          _revieweeName = revieweeDoc.data()?['displayName'] ?? "Seller";
+        }
+      }
+
+      setState(() {}); // 상태 업데이트
+    } catch (e) {
+      print("Error loading user data: $e");
+    }
+  }
+
   Future<void> _submitReview() async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -69,8 +106,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -115,7 +150,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           children: [
             SizedBox(height: 20),
             Text(
-              'user2님,\nuser1님과의 거래가 어떠셨나요?',
+              '$_reviewerName님,\n$_revieweeName님과의 거래가 어떠셨나요?',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
