@@ -9,6 +9,7 @@ import 'editprofile.dart';
 import 'home.dart';
 import 'my_product.dart';
 import './item_history.dart';
+import './notification.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -22,11 +23,13 @@ class _ProfileState extends State<Profile> {
   double hansungPoint = 0.0;
   String profileImage = "";
   bool isLoading = true;
+  int likedItemsCount = 0; // 관심 목록 게시글 수
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _fetchLikedItemsCount(); // 좋아요한 게시글 수 가져오기
   }
 
   Future<void> _fetchUserData() async {
@@ -60,6 +63,21 @@ class _ProfileState extends State<Profile> {
     }
   }
 
+  Future<void> _fetchLikedItemsCount() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      // Firestore에서 likedItems 컬렉션에서 현재 사용자의 좋아요 게시글 수 가져오기
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('likedItems')
+          .where('userId', isEqualTo: currentUser.uid)
+          .get();
+
+      setState(() {
+        likedItemsCount = querySnapshot.docs.length;
+      });
+    }
+  }
+
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
       backgroundColor: Colors.white,
@@ -68,7 +86,7 @@ class _ProfileState extends State<Profile> {
         mainAxisAlignment: MainAxisAlignment.start, // Left-align
         children: [
           Image.asset(
-            'assets/images/상상부기.jpg', // Adjust the path to your image
+            'assets/images/bugi2_2.png', // Adjust the path to your image
             width: 40,
             height: 40,
           ),
@@ -85,8 +103,13 @@ class _ProfileState extends State<Profile> {
       ),
       actions: [
         IconButton(
-          onPressed: () {},
-          icon: Icon(Icons.notifications, color: Colors.black),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => NotificationScreen()),
+            );
+          },
+          icon: Icon(Icons.notifications),
         ),
       ],
     );
@@ -94,7 +117,7 @@ class _ProfileState extends State<Profile> {
 
   Widget _bodyWidget() {
     final List<Map<String, dynamic>> profileOptions = [
-      {"icon": Icons.favorite_border, "title": "관심 목록", "trailing": "(6)"},
+      {"icon": Icons.favorite_border, "title": "관심 목록", "trailing": "($likedItemsCount)"},
       {"icon": Icons.shopping_bag_outlined, "title": "내가 등록한 상품"},
       {"icon": Icons.inventory_2_outlined, "title": "거래 내역"},
       {"icon": Icons.category_outlined, "title": "관심 카테고리"},
@@ -274,6 +297,7 @@ class _ProfileState extends State<Profile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: _appbarWidget(),
       body: _bodyWidget(),
     );

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class Watchlist extends StatefulWidget {
   const Watchlist({super.key});
@@ -8,164 +11,166 @@ class Watchlist extends StatefulWidget {
 }
 
 class _WatchlistState extends State<Watchlist> {
-  List<Map<String, String>> datas = [];
+  List<Map<String, dynamic>> likedItems = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    datas = [
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "아이폰 13프로맥스",
-        "price": "1300000",
-        "likes": "15"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "커피머신",
-        "price": "150000",
-        "likes": "1"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }, {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "커피머신",
-        "price": "150000",
-        "likes": "1"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }, {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }
-    ];
+    _fetchLikedItems();
   }
 
+  Future<void> _fetchLikedItems() async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        throw Exception("로그인된 사용자가 없습니다.");
+      }
+
+      final userId = currentUser.uid;
+
+      // 1. likedItems에서 userId로 필터링
+      final likedSnapshot = await FirebaseFirestore.instance
+          .collection('likedItems')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // 2. items에서 itemId로 게시글 정보 가져오기
+      List<Map<String, dynamic>> items = [];
+      for (var doc in likedSnapshot.docs) {
+        final itemId = doc['itemId'];
+        final itemDoc = await FirebaseFirestore.instance.collection('items').doc(itemId).get();
+
+        if (itemDoc.exists) {
+          final itemData = itemDoc.data()!;
+          String imageUrl = itemData['image'];
+
+          // `gs://` 경로를 다운로드 가능한 URL로 변환
+          if (imageUrl.startsWith('gs://')) {
+            try {
+              final ref = FirebaseStorage.instance.refFromURL(imageUrl);
+              imageUrl = await ref.getDownloadURL();
+            } catch (e) {
+              print("Firebase Storage URL 변환 실패: $e");
+            }
+          }
+
+          items.add({
+            ...itemData,
+            'image': imageUrl,
+          });
+        }
+      }
+
+      setState(() {
+        likedItems = items;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("관심 목록을 불러오는 중 오류 발생: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
-      title: Text(
+      title: const Text(
         "관심 목록",
         style: TextStyle(
           color: Colors.black,
-          fontWeight: FontWeight.bold, // Make the text bold
+          fontWeight: FontWeight.bold,
         ),
       ),
       backgroundColor: Colors.white,
-      centerTitle: true, // Center the title
+      centerTitle: true,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: Colors.black),
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.of(context).pop(),
       ),
       elevation: 0,
     );
   }
 
-
-  String calcStringToWon(String priceString){
-    return "원";
-  }
   Widget _bodyWidget() {
-    return ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        itemBuilder: (BuildContext _context, int index) {
-          //리스트 클릭 페이지 전환
-          return GestureDetector(
-              onTap: (){
-                Navigator.push(context, MaterialPageRoute(builder: (BuildContext){
-                  return Container();
-                }));
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                print(datas[index]["title"]);
-              },
-              //여기까지
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.all(Radius.circular(30)),
-                      child: Image.asset(
-                        datas[index]["image"]!,
-                        width: 100,
-                        height: 100,
-                      ),
-                    ),
-                    Expanded(
-                      child:Container(
-                        height: 100,
-                        padding: const EdgeInsets.only(left: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+    if (likedItems.isEmpty) {
+      return const Center(child: Text("관심 목록이 비어있습니다."));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      itemCount: likedItems.length,
+      itemBuilder: (context, index) {
+        final item = likedItems[index];
+        return GestureDetector(
+          onTap: () {
+            // 상세 페이지로 이동할 로직을 여기에 추가
+            Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) {
+              return Container(); // 상세 페이지로 교체
+            }));
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(30)),
+                  child: Image.network(
+                    item['image'],
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.image_not_supported, color: Colors.grey),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 100,
+                    padding: const EdgeInsets.only(left: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['title'],
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "${item['price']}원",
+                          style: const TextStyle(
+                            color: Color(0xFF0E3672),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text(datas[index]["title"]!),
-                            Text(
-                              datas[index]["price"]! + "원",
-                              style: TextStyle(
-                                color: Color(0xFF0E3672), // 텍스트 색상을 파란색으로 설정
-                              ),
-                            ),
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Icon(Icons.favorite, color: Colors.red), // 하트 아이콘 추가
-                                  SizedBox(width: 5), // 아이콘과 텍스트 간격
-                                  Text(datas[index]["likes"]!), // 좋아요 수 표시
-                                ],
-                              ),
-                            ),
+                            const Icon(Icons.favorite, color: Colors.red),
+                            const SizedBox(width: 5),
+                            Text("${item['likes'] ?? 0}"),
                           ],
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              )
-          );
-        },
-        itemCount: 10,
-
-        separatorBuilder: (BuildContext _context, int index) {
-          return Container(height: 1, color: Colors.black,);
-        }
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
