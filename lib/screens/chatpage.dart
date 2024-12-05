@@ -107,6 +107,20 @@ class _ChatPageState extends State<ChatPage> {
                   separatorBuilder: (context, index) => Divider(height: 1),
                   itemBuilder: (context, index) {
                     final chat = chatRooms[index].data() as Map<String, dynamic>;
+                    final String? currentUserId = getCurrentUserId();
+                     final List<String> participants = List<String>.from(chat['participants'] as List<dynamic>);
+                    final List<String> names = List<String>.from(chat['name'] as List<dynamic>);
+                    print(participants[0]);
+                    final String? otherUserName;
+
+                    if (participants[0] == currentUserId) {
+                      otherUserName = names[1]; // 0번이 내 아이디와 같으면, 1번 이름
+                    } else {
+                      otherUserName = names[0]; // 1번이 내 아이디와 같으면, 0번 이름
+                    }
+                    final bool isUnreadMessage = chat['isRead'] == false && chat['senderId'] != currentUserId;
+
+
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundImage: NetworkImage(chat['profileImage']),
@@ -114,7 +128,7 @@ class _ChatPageState extends State<ChatPage> {
                       title: Row(
                         children: [
                           Text(
-                            chat['name'],
+                            otherUserName,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -136,10 +150,37 @@ class _ChatPageState extends State<ChatPage> {
                           ),
                         ],
                       ),
-                      subtitle: Text(
-                        chat['message'],
-                        style: TextStyle(fontSize: 14, color: Colors.black),
-                        overflow: TextOverflow.ellipsis,
+                      subtitle: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              chat['message'],
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: isUnreadMessage ? FontWeight.w900 : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (chat['notReadCount'] != null && chat['notReadCount'] > 0 &&  chat['senderId'] != currentUserId)
+                            Container(
+                              margin: EdgeInsets.only(left: 8),
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                chat['notReadCount'].toString(),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       trailing: chat['productImage'] != null
                           ? Image.network(
@@ -156,7 +197,7 @@ class _ChatPageState extends State<ChatPage> {
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(
                               chatRoomId: chat['chatRoomId'], // Firestore에서 가져온 데이터
-                              name: chat['name'],
+                              name: otherUserName!,
                               temperature: chat['temperature'],
                               product: chat['product'],
                               price: chat['price'],

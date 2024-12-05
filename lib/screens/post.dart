@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'chatscreen.dart';
 class Post extends StatelessWidget {
   final Map<String, dynamic> itemData;
 
@@ -90,8 +92,58 @@ class Post extends StatelessWidget {
                     ),
                     Spacer(),
                     ElevatedButton(
-                      onPressed: () {
-                        // 채팅 기능
+                      onPressed: () async {
+                        final currentUser = FirebaseAuth.instance.currentUser;
+
+                        if (currentUser == null) {
+                          print("사용자가 로그인하지 않았습니다.");
+                          return;
+                        }
+
+                        final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+
+                        final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+                        if (!userDoc.exists) {
+                          print("사용자 문서를 찾을 수 없습니다.");
+                          return;
+                        }
+                        final String? buyerName = userDoc.data()?['displayName'];
+
+                        final chatRoomDoc = _firestore.collection('chatrooms').doc('${currentUser.uid}${itemData['userId']}');
+
+
+                        // Firestore 문서 필드 업데이트
+                        await chatRoomDoc.set({
+                          'chatRoomId': '${currentUser.uid}${itemData['userId']}',
+                          'message': '', // 초기 상태에서는 메시지가 비어 있음
+                          'name': [buyerName,itemData['displayName']], // 대화 상대 이름
+                          'participants': [currentUser.uid, itemData['userId'] ?? 'unknown'], // 참가자 목록
+                          'price': '${itemData['price']}원', // 상품 가격
+                          'product': itemData['title'] ?? '제목 없음', // 상품 이름
+                          'productImage': itemData['image'] ?? '', // 상품 이미지
+                          'profileImage': currentUser.photoURL ?? '', // 현재 사용자 프로필 이미지
+                          'time': '1주전', // 현재 시간
+                          'temperature': '37.2°C', // 더미 데이터
+                          'senderId' : '',
+                          'isRead' : false,
+                          'notReadCount' : 0,
+                        }, SetOptions(merge: true)); // 기존 데이터 병합
+
+                        // 채팅 화면으로 이동
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              chatRoomId: itemData['title'] ?? '제목 없음', // 채팅방 ID
+                              name: itemData['displayName'] ?? '사용자 이름 없음',
+                              temperature: '37.2°C',
+                              product: itemData['title'] ?? '제목 없음',
+                              price: '${itemData['price']}원',
+                              productImage: itemData['image'] ?? '',
+                            ),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
@@ -115,3 +167,4 @@ class Post extends StatelessWidget {
     );
   }
 }
+

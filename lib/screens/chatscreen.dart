@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:mobile_p/screens/review_screen.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 class ChatScreen extends StatefulWidget {
   final String chatRoomId; // Firestore 채팅방 ID
   final String name; // 대화 상대 이름
@@ -37,25 +38,140 @@ class _ChatScreenState extends State<ChatScreen> {
         .orderBy('timestamp', descending: false)
         .snapshots();
   }
+  void _completeTransaction() async {
+    final confirmation = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('거래 완료하기'),
+        content: Text('이 거래를 완료 처리하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('완료'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmation == true) {
+
+      // 거래 완료 후 리뷰 요청 팝업 표시
+      final reviewConfirmation = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('거래 리뷰 작성'),
+          content: Text('거래 리뷰를 작성하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false), // "아니오"
+              child: Text('아니오'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true), // "네"
+              child: Text('네'),
+            ),
+          ],
+        ),
+      );
+
+      // "네"를 선택하면 리뷰 작성 화면으로 이동
+      if (reviewConfirmation == true) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReviewScreen(
+              chatRoomId: widget.chatRoomId, // productImage 전달
+            ), // 리뷰 작성 화면
+
+          ),
+        );
+      }
+    }
+  }
+
+
+  void _leaveChatRoom() async {
+    final confirmation = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('채팅방 나가기'),
+        content: Text('정말로 이 채팅방을 나가시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('나가기'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmation == true) {
+      // Remove user from chat room participants in Firestore
+      await _firestore.collection('chatrooms').doc(widget.chatRoomId).update({
+        'participants': FieldValue.arrayRemove([_auth.currentUser?.uid])
+      });
+
+      Navigator.pop(context); // Navigate back to the previous screen
+    }
+  }
+
 
   // Firestore에 메시지 추가
   void _sendMessage() async {
     if (_messageController.text.trim().isNotEmpty) {
       final currentUser = _auth.currentUser;
       if (currentUser == null) return;
-
-      await _firestore
+      final String messageText = _messageController.text.trim();
+      final messageDoc = await _firestore
           .collection('chatrooms')
           .doc(widget.chatRoomId)
           .collection('messages')
           .add({
-        'message': _messageController.text,
+        'message':messageText,
         'senderId': currentUser.uid,
         'senderName': currentUser.displayName ?? 'Anonymous',
         'timestamp': FieldValue.serverTimestamp(),
+        'isRead' : false,
+
+      });
+      await _firestore
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .update({
+        'message': messageText, // 마지막 메시지 내용
+        'senderId' : currentUser.uid,
+        'isRead' : false,
+        'notReadCount': FieldValue.increment(1),
       });
 
       _messageController.clear();
+    }
+  }
+  Future<void> markMessageAsRead(String messageId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .collection('messages')
+          .doc(messageId)
+          .update({'isRead': true});
+      await FirebaseFirestore.instance
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .update({
+        'isRead': true,
+        'notReadCount': 0,
+      });
+    } catch (e) {
+      print("Error marking message as read: $e");
     }
   }
 
@@ -96,6 +212,28 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: Colors.black),
+            onSelected: (String result) {
+              if (result == 'leave') {
+                _leaveChatRoom();
+              } else if (result == 'complete') {
+                _completeTransaction();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'leave',
+                child: Text('채팅방 나가기'),
+              ),
+              PopupMenuItem<String>(
+                value: 'complete',
+                child: Text('거래 완료하기'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -175,64 +313,62 @@ class _ChatScreenState extends State<ChatScreen> {
                   reverse: false,
                   itemBuilder: (context, index) {
                     var message = messages[index];
-                    bool isMe =
-                        message['senderId'] == _auth.currentUser?.uid;
+                    bool isMe = message['senderId'] == _auth.currentUser?.uid;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      child: Row(
-                        mainAxisAlignment: isMe
-                            ? MainAxisAlignment.end
-                            : MainAxisAlignment.start,
-                        children: [
-                          if (!isMe) ...[
-                            CircleAvatar(
-                              radius: 16,
-                              child: Icon(Icons.person, size: 16),
+                    return VisibilityDetector(
+                      key: Key(message.id),
+                      onVisibilityChanged: (visibilityInfo) {
+                        if (visibilityInfo.visibleFraction > 0.5 && !isMe && !(message['isRead'] ?? false)) {
+                          // 메시지가 화면에서 50% 이상 보일 때 읽음 처리
+                          markMessageAsRead(message.id);
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        child: Row(
+                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                          children: [
+                            if (!isMe) ...[
+                              CircleAvatar(
+                                radius: 16,
+                                child: Icon(Icons.person, size: 16),
+                              ),
+                              SizedBox(width: 8),
+                            ],
+                            Flexible(
+                              child: Container(
+                                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.6),
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: isMe ? Color(0xFFe8f0fe) : Color(0xFFF1F1F1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message['message'],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    SizedBox(height: 5),
+                                    Text(
+                                      message['timestamp'] != null
+                                          ? (message['timestamp'] as Timestamp).toDate().toString()
+                                          : '',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            SizedBox(width: 8),
                           ],
-                          Flexible(
-                            child: Container(
-                              constraints: BoxConstraints(
-                                  maxWidth: screenWidth * 0.6),
-                              padding: EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: isMe
-                                    ? Color(0xFFe8f0fe)
-                                    : Color(0xFFF1F1F1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isMe
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    message['message'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  SizedBox(height: 5),
-                                  Text(
-                                    message['timestamp'] != null
-                                        ? (message['timestamp'] as Timestamp)
-                                        .toDate()
-                                        .toString()
-                                        : '',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     );
                   },

@@ -86,7 +86,7 @@ class _ProfileState extends State<Profile> {
         mainAxisAlignment: MainAxisAlignment.start, // Left-align
         children: [
           Image.asset(
-            'assets/images/bugi2_2.png', // Adjust the path to your image
+            'assets/images/bugi2.png', // Adjust the path to your image
             width: 40,
             height: 40,
           ),
