@@ -76,7 +76,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
       final reviewUID = _firestore.collection('reviews').doc().id; // Unique ID 생성
       final createdAt = FieldValue.serverTimestamp(); // 현재 시간
       final itemID = widget.chatRoomId; // 채팅방 ID를 ItemID로 사용
-      final rating = (36.5 + (_currentTemperature - 3) * 0.5); // 온도 계산
+
+      // 온도 계산 및 소수점 첫째 자리까지만 반영
+      final rating = double.parse((36.5 + (_currentTemperature - 3) * 0.5).toStringAsFixed(1));
       final reviewText = _reviewController.text.trim();
 
       // Firestore에 리뷰 추가
@@ -90,6 +92,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
         'reviewerUID': currentUser.uid,
         'thumbnail': thumbnail,
       });
+
+      // Reviewee의 HansungPoint 갱신
+      if (revieweeUID != "unknown") {
+        final revieweeDoc = await _firestore.collection('users').doc(revieweeUID).get();
+        final revieweeData = revieweeDoc.data();
+        if (revieweeData != null) {
+          final currentHansungPoint = revieweeData['hansungPoint'] ?? 36.5;
+          final updatedHansungPoint = double.parse(
+            ((currentHansungPoint + rating) / 2).toStringAsFixed(1),
+          ); // 평균 계산 후 소수점 첫째 자리까지만 반영
+
+          await _firestore.collection('users').doc(revieweeUID).update({
+            'hansungPoint': updatedHansungPoint,
+          });
+        }
+      }
 
       // 완료 후 메시지 표시
       ScaffoldMessenger.of(context).showSnackBar(
@@ -182,7 +200,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   ),
                   SizedBox(height: 20),
                   Text(
-                    "${(36.5 + (_currentTemperature - 3) * 0.5).toStringAsFixed(1)}°H",
+                    "${(36.5 + (_currentTemperature - 3) * 0.5).toStringAsFixed(1)}°C",
                     style: TextStyle(
                       fontSize: 18,
                       color: Color(0xFF4AC1DB),

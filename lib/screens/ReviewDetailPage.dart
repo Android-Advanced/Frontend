@@ -8,6 +8,7 @@ class ReviewDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           "리뷰 상세",
@@ -48,7 +49,7 @@ class ReviewDetailPage extends StatelessWidget {
             const SizedBox(height: 10),
             // 온도
             Text(
-              "온도: ${reviewData['temperature'].toStringAsFixed(1)}°H",
+              "온도: ${reviewData['temperature'].toStringAsFixed(1)}°C",
               style: const TextStyle(fontSize: 16, color: Colors.blue),
             ),
             const SizedBox(height: 10),
