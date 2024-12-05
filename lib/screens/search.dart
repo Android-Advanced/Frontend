@@ -1,15 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'home.dart';
 
-class Search extends StatelessWidget {
+class Search extends StatefulWidget {
+  @override
+  _SearchState createState() => _SearchState();
+}
+
+class _SearchState extends State<Search> {
+  String searchQuery = ""; // 검색어 상태
+  List<Map<String, String>> searchResults = []; // 검색 결과 상태
+
+  // Firestore에서 데이터 검색
+  Future<void> _searchItems(String query) async {
+    try {
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('items')
+          .where('title', isGreaterThanOrEqualTo: query)
+          .where('title', isLessThanOrEqualTo: query + '\uf8ff') // Firestore 문자열 검색
+          .get();
+
+      final List<Map<String, String>> loadedItems = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          "image": (data['image'] ?? '').toString(),
+          "title": (data['title'] ?? '').toString(),
+          "price": (data['price'] ?? '').toString(),
+          "description": (data['description'] ?? '').toString(),
+        };
+      }).toList();
+
+      setState(() {
+        searchResults = loadedItems;
+      });
+    } catch (e) {
+      print('검색 중 오류 발생: $e');
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
+          onChanged: (value) {
+            setState(() {
+              searchQuery = value;
+            });
+            _searchItems(value); // 검색 쿼리 업데이트 시 Firestore 호출
+          },
           decoration: InputDecoration(
-            hintText: '원하는 물품을 검색',
-
-            suffixIcon: Icon(Icons.search),
+            hintText: '게시물 제목으로 검색',
+            suffixIcon: GestureDetector(
+              onTap: () {
+                // 검색어를 Home 화면으로 전달하며 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Home(searchQuery: searchQuery),
+                  ),
+                );
+              },
+              child: Icon(Icons.search),
+            ),
             border: InputBorder.none,
           ),
         ),
@@ -21,46 +73,37 @@ class Search extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '나의 카테고리',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                CategoryButton(label: '맛집 탐방'),
-                SizedBox(width: 8),
-                CategoryButton(label: '전자제품'),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '최근 검색',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            if (searchResults.isEmpty)
+              Center(
+                child: Text(
+                  searchQuery.isEmpty
+                      ? '검색어를 입력해주세요.'
+                      : '검색 결과가 없습니다.',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    // 전체 삭제 기능 구현
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: searchResults.length,
+                  itemBuilder: (context, index) {
+                    final item = searchResults[index];
+                    return ListTile(
+                      leading: Image.network(
+                        item["image"]!,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(Icons.error, size: 50); // 이미지 로드 실패 시
+                        },
+                      ),
+                      title: Text(item["title"]!),
+                      subtitle: Text('${item["price"]}원'),
+                    );
                   },
-                  child: Text(
-                    '전체 삭제',
-                    style: TextStyle(color: Colors.grey),
-                  ),
                 ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SearchItem(label: '스타벅스 쿠폰'),
-                SearchItem(label: '전공책'),
-                SearchItem(label: '소년이 온다'),
-              ],
-            ),
+              ),
           ],
         ),
       ),
