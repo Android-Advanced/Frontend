@@ -68,7 +68,7 @@ class ItemHistoryScreen extends StatelessWidget {
           '나의 거래내역',
           style: TextStyle(color: Colors.black),
         ),
-        backgroundColor: Colors.grey[200],
+        backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
