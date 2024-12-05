@@ -6,7 +6,9 @@ import './post_item.dart'; // Import the new file
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  final String searchQuery;
+
+  const Home({super.key, this.searchQuery = ""});
 
   @override
   _HomeState createState() => _HomeState();
@@ -14,18 +16,22 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   List<Map<String, String>> datas = [];
+  List<Map<String, String>> filteredDatas = [];
+  String searchQuery = "";
 
   @override
   void initState() {
     super.initState();
+    searchQuery = widget.searchQuery; // 검색어 초기화
     _fetchItemsFromFirestore();
   }
 
-
   Future<void> _fetchItemsFromFirestore() async {
     try {
-      final QuerySnapshot snapshot =
-      await FirebaseFirestore.instance.collection('items').get();
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('items')
+          .orderBy('createdAt', descending: true) // 최신 순으로 정렬
+          .get();
 
       final List<Map<String, String>> loadedItems = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -34,28 +40,42 @@ class _HomeState extends State<Home> {
           "title": (data['title'] ?? '').toString(),
           "price": (data['price'] ?? '').toString(),
           "userId": (data['userId'] ?? '').toString(),
-          "likes": "0", // 기본값
+          "likes": (data['likes'] ?? '').toString(),
           "description": (data['description'] ?? '').toString(),
           "displayName": (data['displayName'] ?? '').toString(),
-          "createdAt": (data['displayName'] ?? '').toString(),
-
+          "createdAt": data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate().toIso8601String()
+              : '',
+          "hansungPoint": (data['hansungPoint'] ?? '').toString(),
+          "categories": (data['categories'] ?? '').toString(),
+          "buyerId": (data['buyerId'] ?? '').toString(),
         };
       }).toList();
 
       setState(() {
         datas = loadedItems;
+        _applyFilter();
       });
     } catch (e) {
       print('Firestore 데이터를 불러오는 중 오류 발생: $e');
     }
   }
 
-
+  void _applyFilter() {
+    setState(() {
+      filteredDatas = searchQuery.isEmpty
+          ? datas
+          : datas
+          .where((item) =>
+          item['title']!.toLowerCase().contains(searchQuery.toLowerCase()))
+          .toList();
+    });
+  }
 
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
       title: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // Align to the left
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Icon(Icons.menu), // Menu icon
           SizedBox(width: 10), // Add spacing
@@ -68,11 +88,19 @@ class _HomeState extends State<Home> {
       ),
       actions: [
         IconButton(
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            // Search 화면에서 검색어를 받아옴
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => Search()),
             );
+
+            if (result != null) {
+              setState(() {
+                searchQuery = result; // 검색어 업데이트
+                _applyFilter(); // 필터 적용
+              });
+            }
           },
           icon: Icon(Icons.search),
         ),
@@ -101,7 +129,7 @@ class _HomeState extends State<Home> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => Post(
-                    itemData: datas[index], // 선택된 데이터를 전달
+                    itemData: filteredDatas[index], // 선택된 데이터를 전달
 
                   ),
                 ),
@@ -114,7 +142,7 @@ class _HomeState extends State<Home> {
                   ClipRRect(
                     borderRadius: BorderRadius.all(Radius.circular(10)),
                     child: Image.asset(
-                      datas[index]["image"]!,
+                      filteredDatas[index]["image"]!,
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
@@ -130,9 +158,9 @@ class _HomeState extends State<Home> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(datas[index]["title"]!),
+                          Text(filteredDatas[index]["title"]!),
                           Text(
-                            datas[index]["price"]! + "원",
+                            filteredDatas[index]["price"]! + "원",
                             style: TextStyle(
                               color: Color(0xFF0E3672),
                             ),
@@ -144,7 +172,7 @@ class _HomeState extends State<Home> {
                               children: [
                                 Icon(Icons.favorite, color: Colors.red),
                                 SizedBox(width: 5),
-                                Text(datas[index]["likes"]!),
+                                Text(filteredDatas[index]["likes"]!),
                               ],
                             ),
                           ),
@@ -157,7 +185,7 @@ class _HomeState extends State<Home> {
             ),
           );
         },
-        itemCount: datas.length,
+        itemCount: filteredDatas.length,
         separatorBuilder: (BuildContext _context, int index) {
           return Container(
             height: 1,

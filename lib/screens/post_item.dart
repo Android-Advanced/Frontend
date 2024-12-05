@@ -32,19 +32,22 @@ class _PostItemScreenState extends State<PostItemScreen> {
       return;
     }
 
+    final hansungPoint = userDoc['hansungPoint'] ?? 0.0;
+
     final docRef = FirebaseFirestore.instance.collection('items').doc(); // Firestore 컬렉션과 문서 ID 생성
 
     await docRef.set({
       'image': 'https://image.made-in-china.com/202f0j00gCoYVfNWalqT/Newly-Spot-Mobile-Phone-M90-Water-Drop-Large-Screen-Fingerprint-Smartphone.webp', // 임시 이미지 URL
       'title': _titleController.text, // 제목 입력값
-      'price': _priceController.text, // 가격 입력값
+      'price': int.tryParse(_priceController.text) ?? 0, // 가격 입력값
       'description': _descriptionController.text, // 설명 입력값
       'categories': selectedCategories, // 선택된 카테고리 리스트
       'userId': user.uid, // 로그인된 사용자 ID
       'createdAt': FieldValue.serverTimestamp(), // Firestore 서버 타임스탬프
-      'likes':"0",
+      'likes': 0,
       'displayName' : userDoc['displayName'],
       'buyerId':"",
+      'hansungPoint' : hansungPoint,
     });
 
     print('상품이 성공적으로 등록되었습니다!');
