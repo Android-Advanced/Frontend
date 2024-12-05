@@ -141,7 +141,7 @@ class _HomeState extends State<Home> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.all(Radius.circular(10)),
-                    child: Image.asset(
+                    child: Image.network(
                       filteredDatas[index]["image"]!,
                       width: 100,
                       height: 100,
