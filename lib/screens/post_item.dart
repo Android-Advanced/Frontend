@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 class PostItemScreen extends StatefulWidget {
   @override
@@ -11,11 +14,43 @@ class _PostItemScreenState extends State<PostItemScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  File? _selectedImage; // 선택한 이미지 파일을 저장
   List<String> selectedCategories = [];
 
   final List<String> allCategories = [
     '맛집 탐방', '전자제품', '건강', '스포츠', '책', '운동', '중고차', '가구', '도서', '식물', '상품권'
   ];
+
+  // 이미지 선택
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile =
+    await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  // 이미지를 Firebase Storage에 업로드
+  Future<String?> _uploadImage(File image) async {
+    try {
+      final String fileName =
+          '${DateTime.now().millisecondsSinceEpoch}.jpg'; // 고유 파일명 생성
+      final Reference storageRef =
+      FirebaseStorage.instance.ref().child('item_images/$fileName');
+      final UploadTask uploadTask = storageRef.putFile(image);
+      final TaskSnapshot taskSnapshot = await uploadTask;
+
+      // 업로드 완료 후 다운로드 URL 반환
+      return await taskSnapshot.ref.getDownloadURL();
+    } catch (e) {
+      print('이미지 업로드 중 오류 발생: $e');
+      return null;
+    }
+  }
 
   // Firestore에 데이터 저장
   void _addItemToFirestore() async {
@@ -32,12 +67,21 @@ class _PostItemScreenState extends State<PostItemScreen> {
       return;
     }
 
+    // 선택된 이미지를 업로드하고 URL 가져오기
+    String? imageUrl;
+    if (_selectedImage != null) {
+      imageUrl = await _uploadImage(_selectedImage!);
+    } else {
+      print('이미지를 선택해주세요.');
+      return;
+    }
+
     final hansungPoint = userDoc['hansungPoint'] ?? 0.0;
 
     final docRef = FirebaseFirestore.instance.collection('items').doc(); // Firestore 컬렉션과 문서 ID 생성
 
     await docRef.set({
-      'image': 'https://image.made-in-china.com/202f0j00gCoYVfNWalqT/Newly-Spot-Mobile-Phone-M90-Water-Drop-Large-Screen-Fingerprint-Smartphone.webp', // 임시 이미지 URL
+      'image': imageUrl ?? '', // 업로드된 이미지 URL
       'title': _titleController.text, // 제목 입력값
       'price': int.tryParse(_priceController.text) ?? 0, // 가격 입력값
       'description': _descriptionController.text, // 설명 입력값
@@ -78,25 +122,22 @@ class _PostItemScreenState extends State<PostItemScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.add, size: 40, color: Colors.grey),
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                SizedBox(width: 16),
-                Image.network(
-                  'https://image.made-in-china.com/202f0j00gCoYVfNWalqT/Newly-Spot-Mobile-Phone-M90-Water-Drop-Large-Screen-Fingerprint-Smartphone.webp', // 실제 이미지 URL로 변경
-                  width: 80,
-                  height: 80,
+                child: _selectedImage != null
+                    ? Image.file(
+                  _selectedImage!,
                   fit: BoxFit.cover,
-                ),
-              ],
+                )
+                    : Icon(Icons.add, size: 40, color: Colors.grey),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 11.0), // 위쪽 간격 추가
