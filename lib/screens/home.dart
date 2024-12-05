@@ -116,7 +116,7 @@ class _HomeState extends State<Home> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => Post(
-                    itemData: datas[index], // 선택된 데이터를 전달
+                    itemData: filteredDatas[index], // 선택된 데이터를 전달
 
                   ),
                 ),
