@@ -32,6 +32,8 @@ class _PostItemScreenState extends State<PostItemScreen> {
       return;
     }
 
+    final hansungPoint = userDoc['hansungPoint'] ?? 0.0;
+
     final docRef = FirebaseFirestore.instance.collection('items').doc(); // Firestore 컬렉션과 문서 ID 생성
 
     await docRef.set({
@@ -45,6 +47,7 @@ class _PostItemScreenState extends State<PostItemScreen> {
       'likes':"0",
       'displayName' : userDoc['displayName'],
       'buyerId':"",
+      'hansungPoint' : hansungPoint,
     });
 
     print('상품이 성공적으로 등록되었습니다!');

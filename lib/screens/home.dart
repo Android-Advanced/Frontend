@@ -37,8 +37,12 @@ class _HomeState extends State<Home> {
           "likes": "0", // 기본값
           "description": (data['description'] ?? '').toString(),
           "displayName": (data['displayName'] ?? '').toString(),
-          "createdAt": (data['displayName'] ?? '').toString(),
-
+          "createdAt": data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate().toIso8601String()
+              : '',
+          "hansungPoint": (data['hansungPoint'] ?? '').toString(),
+          "categories": (data['categories'] ?? '').toString(),
+          "buyerId": (data['buyerId'] ?? '').toString(),
         };
       }).toList();
 

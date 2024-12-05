@@ -3,9 +3,28 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'chatscreen.dart';
 class Post extends StatelessWidget {
-  final Map<String, String> itemData;
+  final Map<String, dynamic> itemData;
 
   const Post({super.key, required this.itemData});
+
+  String calculateTimeAgo(String createdAt) {
+    try {
+      final DateTime createdTime = DateTime.parse(createdAt);
+      final Duration difference = DateTime.now().difference(createdTime);
+
+      if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}분 전';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}시간 전';
+      } else {
+        return '${difference.inDays}일 전';
+      }
+    } catch (e) {
+      print('시간 계산 중 오류 발생: $e');
+      return '알 수 없음';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,7 +45,7 @@ class Post extends StatelessWidget {
             // 이미지 섹션
             Center(
               child: Image.network(
-                itemData['image'] ?? '', // 데이터베이스의 이미지 URL
+                itemData['image'] ?? '',
                 height: 250,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
@@ -45,12 +64,12 @@ class Post extends StatelessWidget {
                     Icon(Icons.account_circle, color: Colors.blue),
                     SizedBox(width: 8),
                     Text(
-                      itemData['displayName'] ?? '사용자 이름 없음', // 필요한 경우 데이터베이스에서 가져옴
+                      itemData['displayName'] ?? '사용자 이름 없음',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Spacer(),
                     Text(
-                      '37.2°H / 2시간 전', // 더미 데이터
+                      '${itemData['hansungPoint'] ?? '포인트 없음'}°C · ${calculateTimeAgo(itemData['createdAt'] ?? '')}',
                       style: TextStyle(color: Colors.blue),
                     ),
                   ],
@@ -64,13 +83,13 @@ class Post extends StatelessWidget {
                 SizedBox(height: 4),
                 // 게시글 세부 정보
                 Text(
-                  '디지털기기 · 글올 1일 전',
+                  '${itemData['categories'] ?? '카테고리 없음'} · ${itemData['buyerId']!.isEmpty ? '판매중' : '판매완료'}',
                   style: TextStyle(color: Colors.grey),
                 ),
                 SizedBox(height: 8),
                 Text(
                   itemData['description'] ??
-                      '해당 제품에 대한 설명이 없습니다.', // 데이터베이스에 추가 필드가 있으면 사용
+                      '해당 제품에 대한 설명이 없습니다.',
                   style: TextStyle(fontSize: 14),
                 ),
                 SizedBox(height: 16),
