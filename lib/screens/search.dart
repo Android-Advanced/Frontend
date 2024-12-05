@@ -53,12 +53,8 @@ class _SearchState extends State<Search> {
             suffixIcon: GestureDetector(
               onTap: () {
                 // 검색어를 Home 화면으로 전달하며 이동
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Home(searchQuery: searchQuery),
-                  ),
-                );
+                Navigator.pop(context, searchQuery);
+
               },
               child: Icon(Icons.search),
             ),

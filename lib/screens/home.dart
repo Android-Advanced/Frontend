@@ -54,23 +54,28 @@ class _HomeState extends State<Home> {
 
       setState(() {
         datas = loadedItems;
-        filteredDatas = searchQuery.isEmpty
-            ? loadedItems
-            : loadedItems
-            .where((item) => item['title']!
-            .toLowerCase()
-            .contains(searchQuery.toLowerCase()))
-            .toList();
+        _applyFilter();
       });
     } catch (e) {
       print('Firestore 데이터를 불러오는 중 오류 발생: $e');
     }
   }
 
+  void _applyFilter() {
+    setState(() {
+      filteredDatas = searchQuery.isEmpty
+          ? datas
+          : datas
+          .where((item) =>
+          item['title']!.toLowerCase().contains(searchQuery.toLowerCase()))
+          .toList();
+    });
+  }
+
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
       title: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // Align to the left
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Icon(Icons.menu), // Menu icon
           SizedBox(width: 10), // Add spacing
@@ -83,11 +88,19 @@ class _HomeState extends State<Home> {
       ),
       actions: [
         IconButton(
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            // Search 화면에서 검색어를 받아옴
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => Search()),
             );
+
+            if (result != null) {
+              setState(() {
+                searchQuery = result; // 검색어 업데이트
+                _applyFilter(); // 필터 적용
+              });
+            }
           },
           icon: Icon(Icons.search),
         ),
