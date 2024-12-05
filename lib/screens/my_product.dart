@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import './post.dart'; // Post 페이지 import
 
 class Product extends StatefulWidget {
   const Product({super.key});
@@ -20,19 +21,22 @@ class _ProductState extends State<Product> {
     _fetchMyItems();
   }
 
+  /// `gs://` URL을 HTTP(S) URL로 변환하는 함수
   Future<String> _convertGsUrlToHttp(String gsUrl) async {
     try {
       if (gsUrl.startsWith("gs://")) {
         final ref = FirebaseStorage.instance.refFromURL(gsUrl);
-        return await ref.getDownloadURL();
+        final downloadUrl = await ref.getDownloadURL();
+        print("변환된 URL: $downloadUrl");
+        return downloadUrl;
       }
-      return gsUrl; // 이미 HTTP URL인 경우 그대로 반환
     } catch (e) {
-      print("이미지 URL 변환 오류: $e");
-      return ""; // 오류 발생 시 빈 문자열 반환
+      print("URL 변환 중 오류 발생: $e");
     }
+    return gsUrl;
   }
 
+  /// Firestore에서 데이터를 가져오는 함수
   Future<void> _fetchMyItems() async {
     try {
       User? currentUser = FirebaseAuth.instance.currentUser;
@@ -52,12 +56,17 @@ class _ProductState extends State<Product> {
 
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
+
+        // 이미지 URL 변환
         final imageUrl = await _convertGsUrlToHttp(data["image"] ?? "");
+
+        // 필요한 필드만 명시적으로 추가하고 기본값 설정
         final item = {
-          "title": data["title"],
-          "price": data["price"].toString(),
+          "title": data["title"] ?? "제목 없음",
+          "price": data["price"] != null ? data["price"].toString() : "0원",
           "image": imageUrl,
           "buyerId": data["buyerId"] ?? "",
+          ...data // Firestore 데이터 유지
         };
 
         if (item["buyerId"].isEmpty) {
@@ -78,7 +87,7 @@ class _ProductState extends State<Product> {
 
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
-      title: Text(
+      title: const Text(
         "내가 등록한 상품",
         style: TextStyle(
           color: Colors.black,
@@ -88,7 +97,7 @@ class _ProductState extends State<Product> {
       backgroundColor: Colors.white,
       centerTitle: true,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: Colors.black),
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.of(context).pop(),
       ),
       elevation: 0,
@@ -103,40 +112,84 @@ class _ProductState extends State<Product> {
           padding: const EdgeInsets.all(10.0),
           child: Text(
             title,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
-        ListView.separated(
+        ListView.builder(
           shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: items.length,
-          separatorBuilder: (_, __) => Divider(),
           itemBuilder: (context, index) {
             final item = items[index];
-            return ListTile(
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: Image.network(
-                  item["image"],
-                  width: 50,
-                  height: 50,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.image_not_supported,
-                    color: Colors.grey,
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Post(itemData: item), // Post로 데이터 전달
+                  ),
+                );
+              },
+              child: Card(
+                color: Colors.white,
+                margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.network(
+                          item["image"],
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                            size: 80,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item["title"],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8.0),
+                            Text(
+                              "${item["price"]}원",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        item["buyerId"].isEmpty ? "거래 중" : "거래 완료",
+                        style: TextStyle(
+                          color: item["buyerId"].isEmpty ? Colors.orange : Colors.green,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              title: Text(item["title"]),
-              subtitle: Text("${item["price"]}원"),
-              trailing: item["buyerId"].isEmpty
-                  ? Text(
-                "거래 중",
-                style: TextStyle(color: Colors.orange),
-              )
-                  : Text(
-                "거래 완료",
-                style: TextStyle(color: Colors.green),
               ),
             );
           },
@@ -151,16 +204,14 @@ class _ProductState extends State<Product> {
       backgroundColor: Colors.white,
       appBar: _appbarWidget(),
       body: ongoingItems.isEmpty && completedItems.isEmpty
-          ? Center(
+          ? const Center(
         child: Text("등록된 상품이 없습니다."),
       )
           : SingleChildScrollView(
         child: Column(
           children: [
-            if (ongoingItems.isNotEmpty)
-              _buildItemList("거래 진행 중", ongoingItems),
-            if (completedItems.isNotEmpty)
-              _buildItemList("거래 완료", completedItems),
+            if (ongoingItems.isNotEmpty) _buildItemList("거래 진행 중", ongoingItems),
+            if (completedItems.isNotEmpty) _buildItemList("거래 완료", completedItems),
           ],
         ),
       ),

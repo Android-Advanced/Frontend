@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import './post.dart';
 
 class ItemHistoryScreen extends StatelessWidget {
   const ItemHistoryScreen({Key? key}) : super(key: key);
@@ -27,31 +28,35 @@ class ItemHistoryScreen extends StatelessWidget {
     // Firestore에서 판매/구매 내역 가져오기
     final querySnapshot = await FirebaseFirestore.instance.collection('items').get();
 
-    // 판매/구매 완료 항목 분류
     final transactions = await Future.wait(querySnapshot.docs.map((doc) async {
       final data = doc.data();
       final isSeller = data['userId'] == userId;
       final isBuyer = data['buyerId'] == userId;
-      final status = isSeller
-          ? '판매 완료'
-          : isBuyer
-          ? '구매 완료'
-          : '진행 중';
+
+      // 판매 완료와 구매 완료만 포함
+      final isRelevant = (isSeller && (data['buyerId']?.isNotEmpty ?? false)) || isBuyer;
+
+      if (!isRelevant) return null; // 관련 없는 항목은 제외
 
       // 이미지 URL 변환
       final resolvedImageUrl = await _getDownloadUrl(data['image'] ?? '');
 
+      // 거래 상태 결정
+      final status = isSeller
+          ? '판매 완료'
+          : isBuyer
+          ? '구매 완료'
+          : '';
+
       return {
+        ...data, // Firestore에서 가져온 모든 데이터를 포함
         'imageUrl': resolvedImageUrl,
-        'title': data['title'] ?? '상품명 없음',
-        'price': '${data['price'] ?? 0}원',
         'status': status,
-        'isRelevant': isSeller || isBuyer,
       };
     }).toList());
 
-    // 판매/구매와 관련된 항목만 반환
-    return transactions.where((transaction) => transaction['isRelevant']).toList();
+    // null을 제외한 리스트 반환
+    return transactions.where((transaction) => transaction != null).toList().cast<Map<String, dynamic>>();
   }
 
   @override
@@ -93,8 +98,9 @@ class ItemHistoryScreen extends StatelessWidget {
               return TransactionItem(
                 imageUrl: transaction['imageUrl']!,
                 title: transaction['title']!,
-                price: transaction['price']!,
+                price: transaction['price']!.toString(),
                 status: transaction['status']!,
+                itemData: transaction, // 전체 데이터를 전달
               );
             },
           );
@@ -109,48 +115,59 @@ class TransactionItem extends StatelessWidget {
   final String title;
   final String price;
   final String status;
+  final Map<String, dynamic> itemData;
 
   const TransactionItem({
     required this.imageUrl,
     required this.title,
     required this.price,
     required this.status,
+    required this.itemData,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 이미지 표시 (Firebase Storage의 다운로드 URL 사용)
-            Image.network(imageUrl, width: 60, height: 60, fit: BoxFit.cover),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    price,
-                    style: const TextStyle(color: Colors.blue, fontSize: 16),
-                  ),
-                ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Post(itemData: itemData), // 모든 데이터를 전달
+          ),
+        );
+      },
+      child: Card(
+        color: Colors.white,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Image.network(imageUrl, width: 60, height: 60, fit: BoxFit.cover),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      price,
+                      style: const TextStyle(color: Colors.blue, fontSize: 16),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Text(
-              status,
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ],
+              Text(
+                status,
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
         ),
       ),
     );

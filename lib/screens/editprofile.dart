@@ -64,6 +64,9 @@ class _EditProfileState extends State<EditProfile> {
         'profileImage': profileImage,
       });
 
+      // 관련 컬렉션 업데이트 호출
+      await _updateRelatedCollections(_nameController.text);
+
       if (_passwordController.text.isNotEmpty) {
         await currentUser.updatePassword(_passwordController.text);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,6 +93,47 @@ class _EditProfileState extends State<EditProfile> {
         ),
       ),
     );
+  }
+
+  Future<void> _updateRelatedCollections(String newDisplayName) async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final userId = currentUser.uid;
+
+    try {
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      // `items` 컬렉션 업데이트
+      final itemsSnapshot = await FirebaseFirestore.instance
+          .collection('items')
+          .where('userId', isEqualTo: userId)
+          .get();
+      for (var doc in itemsSnapshot.docs) {
+        batch.update(doc.reference, {'displayName': newDisplayName});
+      }
+
+      // `chatrooms` 컬렉션 업데이트
+      final chatroomsSnapshot = await FirebaseFirestore.instance
+          .collection('chatrooms')
+          .where('participants', arrayContains: userId)
+          .get();
+      for (var doc in chatroomsSnapshot.docs) {
+        final chatData = doc.data();
+        List<dynamic> names = chatData['name'] ?? [];
+        int index = chatData['participants'].indexOf(userId);
+
+        if (index != -1 && names.length > index) {
+          names[index] = newDisplayName;
+          batch.update(doc.reference, {'name': names});
+        }
+      }
+
+      await batch.commit();
+      print('관련 컬렉션 업데이트 성공');
+    } catch (e) {
+      print('관련 컬렉션 업데이트 실패: $e');
+    }
   }
 
   Widget _profilePictureSection() {

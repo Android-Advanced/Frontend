@@ -18,6 +18,7 @@ class _HomeState extends State<Home> {
   List<Map<String, String>> datas = [];
   List<Map<String, String>> filteredDatas = [];
   String searchQuery = "";
+  DateTime? _lastPressedAt; // 마지막으로 뒤로 가기 버튼을 누른 시간
 
   @override
   void initState() {
@@ -77,19 +78,18 @@ class _HomeState extends State<Home> {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Icon(Icons.menu), // Menu icon
-          SizedBox(width: 10), // Add spacing
+          Icon(Icons.menu),
+          SizedBox(width: 10),
           Image.asset(
-            'assets/images/bugi2.png',
+            'assets/images/bugi2_2.png',
             width: 40,
             height: 40,
-          ), // Add image
+          ),
         ],
       ),
       actions: [
         IconButton(
           onPressed: () async {
-            // Search 화면에서 검색어를 받아옴
             final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => Search()),
@@ -97,8 +97,8 @@ class _HomeState extends State<Home> {
 
             if (result != null) {
               setState(() {
-                searchQuery = result; // 검색어 업데이트
-                _applyFilter(); // 필터 적용
+                searchQuery = result;
+                _applyFilter();
               });
             }
           },
@@ -119,7 +119,7 @@ class _HomeState extends State<Home> {
 
   Widget _bodyWidget() {
     return RefreshIndicator(
-      onRefresh: _fetchItemsFromFirestore, // 새로고침 시 호출될 함수
+      onRefresh: _fetchItemsFromFirestore,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         itemBuilder: (BuildContext _context, int index) {
@@ -129,8 +129,7 @@ class _HomeState extends State<Home> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => Post(
-                    itemData: filteredDatas[index], // 선택된 데이터를 전달
-
+                    itemData: filteredDatas[index],
                   ),
                 ),
               );
@@ -147,7 +146,7 @@ class _HomeState extends State<Home> {
                       height: 100,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
-                        return Icon(Icons.error, size: 50); // 이미지 로드 실패 시 아이콘 표시
+                        return Icon(Icons.error, size: 50);
                       },
                     ),
                   ),
@@ -198,18 +197,34 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _appbarWidget(),
-      body: _bodyWidget(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => PostItemScreen()),
+    return WillPopScope(
+      onWillPop: () async {
+        final now = DateTime.now();
+        if (_lastPressedAt == null || now.difference(_lastPressedAt!) > Duration(seconds: 2)) {
+          _lastPressedAt = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('뒤로 가기 버튼을 한 번 더 누르시면 앱이 종료됩니다.'),
+              duration: Duration(seconds: 2),
+            ),
           );
-        },
-        backgroundColor: Color(0xFF0E3672),
-        child: Icon(Icons.add, color: Colors.white),
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        appBar: _appbarWidget(),
+        body: _bodyWidget(),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => PostItemScreen()),
+            );
+          },
+          backgroundColor: Color(0xFF0E3672),
+          child: Icon(Icons.add, color: Colors.white),
+        ),
       ),
     );
   }

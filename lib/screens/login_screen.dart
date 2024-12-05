@@ -132,7 +132,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithEmailPassword() async {
     final email = emailController.text.trim();
 
-    // 이메일 검증
     if (!email.endsWith('@hansung.ac.kr')) {
       setState(() {
         emailError = '한성대학교 이메일 주소만 사용할 수 있습니다.';
@@ -151,12 +150,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         if (user.emailVerified) {
           // 인증된 사용자
-          Navigator.push(
+          Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => HomePage()),
+            MaterialPageRoute(builder: (context) => HomePage()), // pushReplacement 사용
           );
         } else {
-          // 이메일 인증 필요
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('이메일 인증이 필요합니다. 이메일을 확인해주세요.')),
           );
@@ -164,7 +162,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      // 요청 차단에 대한 에러 처리
       if (e.toString().contains('We have blocked all requests')) {
         showDialog(
           context: context,
@@ -186,6 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
+
   void _validateSignupPassword() {
     setState(() {
       final password = signupPasswordController.text;
