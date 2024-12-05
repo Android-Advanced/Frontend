@@ -108,6 +108,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _bottomNavigationbarWidget() {
     return BottomNavigationBar(
+      backgroundColor: Colors.white,
       type: BottomNavigationBarType.fixed,  // 균등하게 아이템을 배분
       onTap: (int index){
         setState(() {

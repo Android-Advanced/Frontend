@@ -59,6 +59,7 @@ class _MapscreenState extends State<Mapscreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('지도'),
       ),
@@ -76,16 +77,19 @@ class _MapscreenState extends State<Mapscreen> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
+            backgroundColor: Colors.white,
             onPressed: _zoomIn, // 줌인 버튼
             child: Icon(Icons.zoom_in),
           ),
           SizedBox(height: 10),
           FloatingActionButton(
+            backgroundColor: Colors.white,
             onPressed: _zoomOut, // 줌아웃 버튼
             child: Icon(Icons.zoom_out),
           ),
           SizedBox(height: 10),
           FloatingActionButton(
+            backgroundColor: Colors.white,
             onPressed: () {
               // 새로운 위치 추가
               setState(() {

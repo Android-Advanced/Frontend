@@ -75,6 +75,7 @@ class _HomeState extends State<Home> {
 
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
+      backgroundColor: Colors.white,
       title: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
@@ -213,6 +214,7 @@ class _HomeState extends State<Home> {
         return true;
       },
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: _appbarWidget(),
         body: _bodyWidget(),
         floatingActionButton: FloatingActionButton(
