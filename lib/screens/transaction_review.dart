@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import './ReviewDetailPage.dart';
 
 class ReviewPage extends StatelessWidget {
   const ReviewPage({Key? key}) : super(key: key);
@@ -125,76 +126,85 @@ class ReviewPage extends StatelessWidget {
             itemCount: reviews.length,
             itemBuilder: (context, index) {
               final review = reviews[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 리뷰어의 프로필 이미지
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundImage: review["reviewerImage"].isNotEmpty
-                          ? NetworkImage(review["reviewerImage"])
-                          : null,
-                      backgroundColor: Colors.grey[300],
-                      child: review["reviewerImage"].isEmpty
-                          ? Icon(Icons.person, color: Colors.white)
-                          : null,
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReviewDetailPage(reviewData: review),
                     ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                review["reviewerName"],
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(width: 5),
-                              Text(
-                                "${review["temperature"].toStringAsFixed(1)}°H",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF2657A1),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            review["reviewText"],
-                            style: TextStyle(fontSize: 14, color: Colors.black),
-                          ),
-                        ],
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 리뷰어의 프로필 이미지
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundImage: review["reviewerImage"].isNotEmpty
+                            ? NetworkImage(review["reviewerImage"])
+                            : null,
+                        backgroundColor: Colors.grey[300],
+                        child: review["reviewerImage"].isEmpty
+                            ? Icon(Icons.person, color: Colors.white)
+                            : null,
                       ),
-                    ),
-                    SizedBox(width: 10),
-                    // 리뷰 상품 썸네일 이미지
-                    review["thumbnail"].isNotEmpty
-                        ? Image.network(
-                      review["thumbnail"],
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                    )
-                        : Container(
-                      width: 50,
-                      height: 50,
-                      color: Colors.grey[300],
-                      child: Icon(Icons.image_not_supported, color: Colors.grey),
-                    ),
-                  ],
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  review["reviewerName"],
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  "${review["temperature"].toStringAsFixed(1)}°H",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF2657A1),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              review["reviewText"],
+                              style: TextStyle(fontSize: 14, color: Colors.black),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      review["thumbnail"].isNotEmpty
+                          ? Image.network(
+                        review["thumbnail"],
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      )
+                          : Container(
+                        width: 50,
+                        height: 50,
+                        color: Colors.grey[300],
+                        child: Icon(Icons.image_not_supported, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
           ),
-        ),
+        )
       ],
     );
   }
