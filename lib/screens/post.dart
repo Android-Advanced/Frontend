@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Post extends StatelessWidget {
-  final Map<String, String> itemData;
+  final Map<String, dynamic> itemData;
 
   const Post({super.key, required this.itemData});
   @override

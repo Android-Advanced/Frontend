@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import './post.dart'; // Post 화면 import
 
 class Watchlist extends StatefulWidget {
   const Watchlist({super.key});
@@ -57,6 +58,7 @@ class _WatchlistState extends State<Watchlist> {
           }
 
           items.add({
+            'id': itemDoc.id, // 문서 ID 추가
             ...itemData,
             'image': imageUrl,
           });
@@ -104,36 +106,44 @@ class _WatchlistState extends State<Watchlist> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       itemCount: likedItems.length,
       itemBuilder: (context, index) {
         final item = likedItems[index];
         return GestureDetector(
           onTap: () {
-            // 상세 페이지로 이동할 로직을 여기에 추가
-            Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) {
-              return Container(); // 상세 페이지로 교체
-            }));
+            // Post 화면으로 이동하며 선택된 item 데이터 전달
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Post(itemData: item),
+              ),
+            );
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(30)),
-                  child: Image.network(
-                    item['image'],
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.image_not_supported, color: Colors.grey),
+          child: Card(
+            color: Colors.white, // 카드 배경색 설정
+            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    child: Image.network(
+                      item['image'],
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: Container(
-                    height: 100,
-                    padding: const EdgeInsets.only(left: 20),
+                  const SizedBox(width: 16),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -150,20 +160,20 @@ class _WatchlistState extends State<Watchlist> {
                             color: Color(0xFF0E3672),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            const Icon(Icons.favorite, color: Colors.red),
-                            const SizedBox(width: 5),
+                            const Icon(Icons.favorite, color: Colors.red, size: 16),
+                            const SizedBox(width: 4),
                             Text("${item['likes'] ?? 0}"),
                           ],
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -174,6 +184,7 @@ class _WatchlistState extends State<Watchlist> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: _appbarWidget(),
       body: _bodyWidget(),
     );

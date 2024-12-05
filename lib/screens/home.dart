@@ -58,7 +58,7 @@ class _HomeState extends State<Home> {
           Icon(Icons.menu), // Menu icon
           SizedBox(width: 10), // Add spacing
           Image.asset(
-            'assets/images/bugi2.png',
+            'assets/images/bugi2_2.png',
             width: 40,
             height: 40,
           ), // Add image

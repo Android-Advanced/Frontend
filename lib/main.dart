@@ -6,7 +6,7 @@ import 'screens/review_screen.dart'; // ReviewScreen이 있는 파일 경로
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options:DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp();
   WidgetsFlutterBinding.ensureInitialized(); // Zone 초기화
   runApp(HansungMarketApp());
 }
