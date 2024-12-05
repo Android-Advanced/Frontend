@@ -68,9 +68,25 @@ class Post extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Spacer(),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // 찜 버튼
+                        IconButton(
+                          icon: Icon(
+                            Icons.favorite_border, // 기본 찜 상태는 빈 하트
+                            color: Colors.red,
+                          ),
+                          onPressed: () {
+                            // 찜 상태 관리 로직
+
+                          },
+                        ),
                     Text(
                       '${itemData['hansungPoint'] ?? '포인트 없음'}°C · ${calculateTimeAgo(itemData['createdAt'] ?? '')}',
                       style: TextStyle(color: Colors.blue),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -34,7 +34,7 @@ class _HomeState extends State<Home> {
           "title": (data['title'] ?? '').toString(),
           "price": (data['price'] ?? '').toString(),
           "userId": (data['userId'] ?? '').toString(),
-          "likes": "0", // 기본값
+          "likes": (data['likes'] ?? '').toString(),
           "description": (data['description'] ?? '').toString(),
           "displayName": (data['displayName'] ?? '').toString(),
           "createdAt": data['createdAt'] != null
