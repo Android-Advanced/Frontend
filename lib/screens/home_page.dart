@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'profile.dart';
 import './chatpage.dart';
 import 'home.dart';
+import 'map.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -93,7 +94,7 @@ class _HomePageState extends State<HomePage> {
         return Home();
 
       case 1:
-        return Container();
+        return Mapscreen();
 
       case 2:
         return ChatPage();

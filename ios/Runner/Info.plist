@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>id.flutter.embedded_view_preview</key>
+	<true/>
 </dict>
 </plist>
