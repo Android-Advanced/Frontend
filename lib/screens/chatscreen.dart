@@ -114,12 +114,29 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     if (confirmation == true) {
-      // Remove user from chat room participants in Firestore
-      await _firestore.collection('chatrooms').doc(widget.chatRoomId).update({
-        'participants': FieldValue.arrayRemove([_auth.currentUser?.uid])
+      final chatRoomRef = _firestore.collection('chatrooms').doc(widget.chatRoomId);
+
+      // Firestore 트랜잭션을 사용하여 participants 필드 업데이트
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(chatRoomRef);
+        if (!snapshot.exists) return;
+
+        // participants 배열 가져오기
+        final participants = List<String>.from(snapshot['participants'] ?? []);
+        final currentUserId = _auth.currentUser?.uid;
+
+        if (currentUserId != null && participants.contains(currentUserId)) {
+          // 현재 사용자의 값을 "out"으로 변경
+          final updatedParticipants = participants.map((participant) {
+            return participant == currentUserId ? "out" : participant;
+          }).toList();
+
+          // Firestore에 업데이트
+          transaction.update(chatRoomRef, {'participants': updatedParticipants});
+        }
       });
 
-      Navigator.pop(context); // Navigate back to the previous screen
+      Navigator.pop(context); // 이전 화면으로 돌아감
     }
   }
 
