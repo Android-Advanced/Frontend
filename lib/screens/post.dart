@@ -16,12 +16,14 @@ class Post extends StatefulWidget {
 class _PostState extends State<Post> {
   bool _isLiked = false;
   String profileImageUrl = '';
+  String currentUserId = '';
 
   @override
   void initState() {
     super.initState();
     _checkIfLiked();
     _fetchUserProfileImage();
+    _getCurrentUserId();
   }
 
   Future<void> _checkIfLiked() async {
@@ -162,6 +164,61 @@ class _PostState extends State<Post> {
     }
   }
 
+  void _getCurrentUserId() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      setState(() {
+        currentUserId = currentUser.uid;
+      });
+    }
+  }
+
+  Future<void> _confirmDeletePost() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('게시물 삭제'),
+          content: Text('정말로 게시물을 삭제하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false), // 아니오 선택
+              child: Text('아니오'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true), // 예 선택
+              child: Text('예'),
+            ),
+          ],
+        );
+      },
+    );
+
+    //예 누를시 실행
+    if (shouldDelete == true) {
+      await _deletePost();
+    }
+  }
+
+  Future<void> _deletePost() async {
+    try {
+      final docId = widget.itemData['itemId'];
+      if (docId != null && docId.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('items').doc(docId).delete();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('게시물이 삭제되었습니다.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      print('게시물 삭제 실패: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('게시물 삭제 중 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+
   String calculateTimeAgo(String createdAt) {
     try {
       final DateTime createdTime = DateTime.parse(createdAt);
@@ -197,16 +254,42 @@ class _PostState extends State<Post> {
         child: Column(
           children: [
             Center(
-              child: Image.network(
-                widget.itemData['image'] ?? '',
-                height: 250,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(Icons.error, size: 50);
-                },
+              child: Container(
+                width: double.infinity,
+                height: 480,
+                child: ClipRRect(
+                  child: Image.network(
+                    widget.itemData['image'] ?? '',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.error, size: 50);
+                    },
+                  ),
+                ),
               ),
             ),
             Spacer(),
+            if (currentUserId == widget.itemData['userId']) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Spacer(),
+                  ElevatedButton(
+                    onPressed: _confirmDeletePost,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      '게시물 삭제',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -262,14 +345,57 @@ class _PostState extends State<Post> {
                         color: Colors.black,
                       ),
                     ),
+                    SizedBox(width: 8),
+                    Text(
+                      '가격 제안 불가',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                     Spacer(),
                     ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        final currentUser = FirebaseAuth.instance.currentUser;
+
+                        if (currentUser == null) {
+                          print("사용자가 로그인하지 않았습니다.");
+                          return;
+                        }
+
+                        final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+
+                        final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+                        if (!userDoc.exists) {
+                          print("사용자 문서를 찾을 수 없습니다.");
+                          return;
+                        }
+                        final String? buyerName = userDoc.data()?['displayName'];
+
+                        final chatRoomDoc = _firestore.collection('chatrooms').doc('${currentUser.uid}${widget.itemData['userId']}');
+
+
+                        // Firestore 문서 필드 업데이트
+                        await chatRoomDoc.set({
+                          'chatRoomId': '${currentUser.uid}${widget.itemData['userId']}',
+                          'message': '', // 초기 상태에서는 메시지가 비어 있음
+                          'name': [buyerName,widget.itemData['displayName']], // 대화 상대 이름
+                          'participants': [currentUser.uid, widget.itemData['userId'] ?? 'unknown'], // 참가자 목록
+                          'price': '${widget.itemData['price']}원', // 상품 가격
+                          'product': widget.itemData['title'] ?? '제목 없음', // 상품 이름
+                          'productImage': widget.itemData['image'] ?? '', // 상품 이미지
+                          'profileImage': currentUser.photoURL ?? '', // 현재 사용자 프로필 이미지
+                          'time': '1주전', // 현재 시간
+                          'temperature': '37.2°C', // 더미 데이터
+                          'senderId' : '',
+                          'isRead' : false,
+                          'notReadCount' : 0,
+                        }, SetOptions(merge: true)); // 기존 데이터 병합
+
+                        // 채팅 화면으로 이동
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(
-                              chatRoomId: widget.itemData['title'] ?? '제목 없음',
+                              chatRoomId: widget.itemData['title'] ?? '제목 없음', // 채팅방 ID
                               name: widget.itemData['displayName'] ?? '사용자 이름 없음',
                               temperature: '37.2°C',
                               product: widget.itemData['title'] ?? '제목 없음',
@@ -293,6 +419,7 @@ class _PostState extends State<Post> {
                     ),
                   ],
                 ),
+                SizedBox(height: 16),
               ],
             ),
           ],
