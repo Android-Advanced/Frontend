@@ -17,6 +17,7 @@ class _PostState extends State<Post> {
   bool _isLiked = false;
   String profileImageUrl = '';
   String currentUserId = '';
+  double hansungPoint = 0.0;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _PostState extends State<Post> {
           final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
             profileImageUrl = userData['profileImage'] ?? '';
+            hansungPoint = userData['hansungPoint']?.toDouble() ?? 0.0; // hansungPoint 값 설정
             if (profileImageUrl.startsWith('gs://')) {
               FirebaseStorage.instance
                   .refFromURL(profileImageUrl)
@@ -72,7 +74,7 @@ class _PostState extends State<Post> {
         }
       }
     } catch (e) {
-      print('프로필 이미지 가져오기 실패: $e');
+      print('프로필 이미지 및 한성 포인트 가져오기 실패: $e');
     }
   }
 
@@ -310,15 +312,25 @@ class _PostState extends State<Post> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Spacer(),
-                    IconButton(
-                      icon: Icon(
-                        _isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: Colors.red,
-                      ),
-                      onPressed: _toggleLike,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: Colors.red,
+                          ),
+                          onPressed: _toggleLike,
+                        ),
+                        Text(
+                          '$hansungPoint°C · ${calculateTimeAgo(widget.itemData['createdAt'] ?? '')}',
+                          style: TextStyle(color: Colors.blue),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+
                 SizedBox(height: 8),
                 Text(
                   widget.itemData['title'] ?? '제목 없음',
@@ -351,6 +363,7 @@ class _PostState extends State<Post> {
                       style: TextStyle(color: Colors.grey),
                     ),
                     Spacer(),
+                    if (currentUserId != widget.itemData['userId'] && (widget.itemData['buyerId']?.isEmpty ?? true))
                     ElevatedButton(
                       onPressed: () async {
                         final currentUser = FirebaseAuth.instance.currentUser;
