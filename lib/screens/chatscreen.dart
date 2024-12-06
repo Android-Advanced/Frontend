@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_p/screens/review_screen.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 class ChatScreen extends StatefulWidget {
@@ -28,7 +32,9 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _messageController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
 
   // Firestore에서 메시지를 가져오는 스트림
   Stream<QuerySnapshot> getChatMessages() {
@@ -158,6 +164,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'senderName': currentUser.displayName ?? 'Anonymous',
         'timestamp': FieldValue.serverTimestamp(),
         'isRead' : false,
+        'imageUrl':"",
 
       });
       await _firestore
@@ -173,6 +180,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messageController.clear();
     }
   }
+  //메시지 읽음 처리
   Future<void> markMessageAsRead(String messageId) async {
     try {
       await FirebaseFirestore.instance
@@ -190,6 +198,50 @@ class _ChatScreenState extends State<ChatScreen> {
       });
     } catch (e) {
       print("Error marking message as read: $e");
+    }
+  }
+  // 이미지 선택 및 전송
+  Future<void> _sendImage() async {
+    try {
+      final XFile? pickedFile =
+      await _picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile == null) return;
+
+      File file = File(pickedFile.path);
+      String fileName =
+          'chat_images/${DateTime.now().millisecondsSinceEpoch}_${_auth.currentUser?.uid}.jpg';
+      final storageRef = _storage.ref().child(fileName);
+
+      await storageRef.putFile(file);
+
+      String imageUrl = await storageRef.getDownloadURL();
+
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) return;
+
+      await _firestore
+          .collection('chatrooms')
+          .doc(widget.chatRoomId)
+          .collection('messages')
+          .add({
+        'imageUrl': imageUrl,
+        'senderId': currentUser.uid,
+        'senderName': currentUser.displayName ?? 'Anonymous',
+        'timestamp': FieldValue.serverTimestamp(),
+        'isRead': false,
+        'message':'',
+      });
+
+      await _firestore.collection('chatrooms').doc(widget.chatRoomId).update({
+        'message': '사진을 보냈습니다.',
+        'senderId': currentUser.uid,
+        'isRead': false,
+        'notReadCount': FieldValue.increment(1),
+      });
+
+      print("Image sent successfully");
+    } catch (e) {
+      print("Error sending image: $e");
     }
   }
 
@@ -364,13 +416,18 @@ class _ChatScreenState extends State<ChatScreen> {
                                 child: Column(
                                   crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      message['message'],
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black,
+                                    if (message['imageUrl'] != null &&
+                                        message['imageUrl'].toString().isNotEmpty)
+                                      Image.network(message['imageUrl']),
+                                    if (message['message'] != null &&
+                                        message['message'].toString().isNotEmpty)
+                                      Text(
+                                        message['message'],
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                        ),
                                       ),
-                                    ),
                                     SizedBox(height: 5),
                                     Text(
                                       message['timestamp'] != null
@@ -405,6 +462,10 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             child: Row(
               children: [
+                IconButton(
+                  icon: Icon(Icons.photo, color: Colors.grey),
+                  onPressed: _sendImage,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
