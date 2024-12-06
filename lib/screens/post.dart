@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'chatscreen.dart';
 
@@ -14,11 +15,13 @@ class Post extends StatefulWidget {
 
 class _PostState extends State<Post> {
   bool _isLiked = false;
+  String profileImageUrl = '';
 
   @override
   void initState() {
     super.initState();
     _checkIfLiked();
+    _fetchUserProfileImage();
   }
 
   Future<void> _checkIfLiked() async {
@@ -31,9 +34,8 @@ class _PostState extends State<Post> {
 
     if (itemId.isEmpty) return;
 
-    final likedItemDoc = FirebaseFirestore.instance
-        .collection('likedItems')
-        .doc('${userId}_$itemId');
+    final likedItemDoc =
+    FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
 
     final likedItemSnapshot = await likedItemDoc.get();
 
@@ -42,30 +44,56 @@ class _PostState extends State<Post> {
     });
   }
 
+  Future<void> _fetchUserProfileImage() async {
+    try {
+      final String userId = widget.itemData['userId'] ?? '';
+
+      if (userId.isNotEmpty) {
+        final userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          setState(() {
+            profileImageUrl = userData['profileImage'] ?? '';
+            if (profileImageUrl.startsWith('gs://')) {
+              FirebaseStorage.instance
+                  .refFromURL(profileImageUrl)
+                  .getDownloadURL()
+                  .then((url) {
+                setState(() {
+                  profileImageUrl = url;
+                });
+              });
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('프로필 이미지 가져오기 실패: $e');
+    }
+  }
+
   Future<void> _toggleLike() async {
     try {
       if (_isLiked) {
-        // 관심 목록에서 제거
         await _removeFromLikedItems();
       } else {
-        // 관심 목록에 추가
         await _addToLikedItems();
       }
 
-      // Firestore에서 최신 데이터를 가져와 UI 상태 업데이트
       final itemDoc = FirebaseFirestore.instance.collection('items').doc(widget.itemData['itemId']);
       final snapshot = await itemDoc.get();
       final updatedLikes = snapshot.data()?['likes'] ?? 0;
 
       setState(() {
         _isLiked = !_isLiked;
-        widget.itemData['likes'] = updatedLikes; // 최신 데이터 반영
+        widget.itemData['likes'] = updatedLikes;
       });
     } catch (e) {
       print("좋아요 토글 중 오류 발생: $e");
     }
   }
-
 
   Future<void> _addToLikedItems() async {
     try {
@@ -88,9 +116,8 @@ class _PostState extends State<Post> {
         return;
       }
 
-      final likedItemDoc = FirebaseFirestore.instance
-          .collection('likedItems')
-          .doc('${userId}_$itemId');
+      final likedItemDoc =
+      FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
 
       final itemDoc = FirebaseFirestore.instance.collection('items').doc(itemId);
 
@@ -100,18 +127,13 @@ class _PostState extends State<Post> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await itemDoc.update({
-        'likes': FieldValue.increment(1), // 관심 목록에 추가 시 +1
-      });
+      await itemDoc.update({'likes': FieldValue.increment(1)});
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("관심 목록에 추가되었습니다.")),
       );
     } catch (e) {
       print("찜 추가 중 오류 발생: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("오류가 발생했습니다. 다시 시도해주세요.")),
-      );
     }
   }
 
@@ -124,27 +146,36 @@ class _PostState extends State<Post> {
       final String userId = currentUser.uid;
       final String itemId = widget.itemData['itemId'] ?? '';
 
-      final likedItemDoc = FirebaseFirestore.instance
-          .collection('likedItems')
-          .doc('${userId}_$itemId');
+      final likedItemDoc =
+      FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
 
       final itemDoc = FirebaseFirestore.instance.collection('items').doc(itemId);
 
       await likedItemDoc.delete();
-
-      // 관심 목록에서 제거 시
-      await itemDoc.update({
-        'likes': FieldValue.increment(-1), // 관심 목록에서 제거 시 -1
-      });
+      await itemDoc.update({'likes': FieldValue.increment(-1)});
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("관심 목록에서 제거되었습니다.")),
       );
     } catch (e) {
       print("찜 제거 중 오류 발생: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("오류가 발생했습니다. 다시 시도해주세요.")),
-      );
+    }
+  }
+
+  String calculateTimeAgo(String createdAt) {
+    try {
+      final DateTime createdTime = DateTime.parse(createdAt);
+      final Duration difference = DateTime.now().difference(createdTime);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays}일 전';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours}시간 전';
+      } else {
+        return '${difference.inMinutes}분 전';
+      }
+    } catch (e) {
+      return '';
     }
   }
 
@@ -181,7 +212,15 @@ class _PostState extends State<Post> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.account_circle, color: Colors.blue),
+                    CircleAvatar(
+                      radius: 25,
+                      backgroundImage: profileImageUrl.isNotEmpty
+                          ? NetworkImage(profileImageUrl)
+                          : null,
+                      child: profileImageUrl.isEmpty
+                          ? Icon(Icons.account_circle, size: 50, color: Colors.blue)
+                          : null,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       widget.itemData['displayName'] ?? '사용자 이름 없음',
@@ -262,4 +301,3 @@ class _PostState extends State<Post> {
     );
   }
 }
-
