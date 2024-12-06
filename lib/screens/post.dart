@@ -17,6 +17,7 @@ class _PostState extends State<Post> {
   bool _isLiked = false;
   String profileImageUrl = '';
   String currentUserId = '';
+  double hansungPoint = 0.0;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _PostState extends State<Post> {
           final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
             profileImageUrl = userData['profileImage'] ?? '';
+            hansungPoint = userData['hansungPoint']?.toDouble() ?? 0.0; // hansungPoint 값 설정
             if (profileImageUrl.startsWith('gs://')) {
               FirebaseStorage.instance
                   .refFromURL(profileImageUrl)
@@ -72,7 +74,7 @@ class _PostState extends State<Post> {
         }
       }
     } catch (e) {
-      print('프로필 이미지 가져오기 실패: $e');
+      print('프로필 이미지 및 한성 포인트 가져오기 실패: $e');
     }
   }
 
@@ -321,7 +323,7 @@ class _PostState extends State<Post> {
                           onPressed: _toggleLike,
                         ),
                         Text(
-                          '${widget.itemData['hansungPoint'] ?? '포인트 없음'}°C · ${calculateTimeAgo(widget.itemData['createdAt'] ?? '')}',
+                          '$hansungPoint°C · ${calculateTimeAgo(widget.itemData['createdAt'] ?? '')}',
                           style: TextStyle(color: Colors.blue),
                         ),
                       ],
