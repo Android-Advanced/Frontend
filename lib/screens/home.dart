@@ -261,20 +261,27 @@ class _HomeState extends State<Home> {
                                   future: _isLiked(item["itemId"]),
                                   builder: (context, snapshot) {
                                     final isLiked = snapshot.data ?? false;
-                                    return IconButton(
-                                      icon: Icon(
-                                        isLiked ? Icons.favorite : Icons.favorite_border,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () => _toggleLike(item["itemId"], int.parse(item["likes"] ?? '0')),
+                                    return Row(
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(
+                                            isLiked ? Icons.favorite : Icons.favorite_border,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () => _toggleLike(
+                                            item["itemId"],
+                                            int.parse(item["likes"] ?? '0'),
+                                          ),
+                                        ),
+                                        Text(item["likes"]!), // 좋아요 수
+                                      ],
                                     );
                                   },
                                 ),
-                                SizedBox(width: 5),
-                                Text(item["likes"]!),
                               ],
                             ),
                           ),
+
                         ],
                       ),
                     ),
