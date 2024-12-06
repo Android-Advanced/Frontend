@@ -72,14 +72,7 @@ class _ChatPageState extends State<ChatPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.notifications_outlined, color: Colors.black),
-              onPressed: () {
-                // 알림 버튼 클릭 처리
-              },
-            ),
-          ],
+
         ),
         body: Column(
           children: [
