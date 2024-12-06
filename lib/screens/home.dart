@@ -5,6 +5,7 @@ import './post.dart';
 import './post_item.dart'; // Import the new file
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import './categorysearch.dart';
 
 class Home extends StatefulWidget {
   final String searchQuery;
@@ -21,6 +22,48 @@ class _HomeState extends State<Home> {
   String searchQuery = "";
   DateTime? _lastPressedAt; // 마지막으로 뒤로 가기 버튼을 누른 시간
   final String? userId = FirebaseAuth.instance.currentUser?.uid;
+  List<String> allCategories = [
+    '맛집 탐방',
+    '전자제품',
+    '건강',
+    '스포츠',
+    '책',
+    '운동',
+    '중고차',
+    '가구',
+    '도서',
+    '식물',
+    '상품권'
+  ];
+  List<String> selectedCategories = [];
+
+  void _navigateToCategorySelection() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategorySelectionScreen(
+          allCategories: allCategories,
+          selectedCategories: selectedCategories,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        selectedCategories = result;
+      });
+    }
+  }
+
+  void _filterByCategory(String category) {
+    setState(() {
+      filteredDatas = datas
+          .where((item) =>
+      item['categories'] != null &&
+          item['categories']!.contains(category))
+          .toList();
+    });
+  }
 
   @override
   void initState() {
@@ -112,14 +155,39 @@ class _HomeState extends State<Home> {
     return AppBar(
       backgroundColor: Colors.white,
       title: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Icon(Icons.menu),
-          SizedBox(width: 10),
+          IconButton(
+            icon: Icon(Icons.menu),
+            onPressed: _navigateToCategorySelection,
+          ),
           Image.asset(
             'assets/images/bugi2_2.png',
             width: 40,
             height: 40,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: selectedCategories.map((category) {
+                  return GestureDetector(
+                    onTap: () => _filterByCategory(category),
+                    child: Container(
+                      margin: EdgeInsets.symmetric(horizontal: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        category,
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ],
       ),
