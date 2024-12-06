@@ -257,6 +257,14 @@ class _ChatScreenState extends State<ChatScreen> {
       final currentUser = _auth.currentUser;
       if (currentUser == null) return;
 
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      // Firestore에서 가져온 profileImage 값
+      String profileImageUrl = userDoc['profileImage'] ?? '';
+
       await _firestore
           .collection('chatrooms')
           .doc(widget.chatRoomId)
@@ -268,6 +276,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
         'message':'',
+        'profileImageUrl' : profileImageUrl,
       });
 
       await _firestore.collection('chatrooms').doc(widget.chatRoomId).update({
