@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'home.dart';
 
 class Search extends StatefulWidget {
   @override
@@ -37,6 +36,7 @@ class _SearchState extends State<Search> {
       print('검색 중 오류 발생: $e');
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,7 +46,7 @@ class _SearchState extends State<Search> {
             setState(() {
               searchQuery = value;
             });
-            _searchItems(value); // 검색 쿼리 업데이트 시 Firestore 호출
+            _searchItems(value); // 검색어 입력 시 Firestore 호출
           },
           decoration: InputDecoration(
             hintText: '게시물 제목으로 검색',
@@ -54,7 +54,6 @@ class _SearchState extends State<Search> {
               onTap: () {
                 // 검색어를 Home 화면으로 전달하며 이동
                 Navigator.pop(context, searchQuery);
-
               },
               child: Icon(Icons.search),
             ),
@@ -69,16 +68,14 @@ class _SearchState extends State<Search> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (searchResults.isEmpty)
+            if (searchResults.isEmpty && searchQuery.isNotEmpty)
               Center(
                 child: Text(
-                  searchQuery.isEmpty
-                      ? '검색어를 입력해주세요.'
-                      : '검색 결과가 없습니다.',
+                  '검색 결과가 없습니다.',
                   style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
               )
-            else
+            else if (searchResults.isNotEmpty)
               Expanded(
                 child: ListView.builder(
                   itemCount: searchResults.length,
@@ -99,49 +96,16 @@ class _SearchState extends State<Search> {
                     );
                   },
                 ),
+              )
+            else
+              Center(
+                child: Text(
+                  '검색어를 입력해주세요.',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class CategoryButton extends StatelessWidget {
-  final String label;
-
-  CategoryButton({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey[300],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: Colors.black),
-      ),
-    );
-  }
-}
-
-class SearchItem extends StatelessWidget {
-  final String label;
-
-  SearchItem({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 16),
       ),
     );
   }

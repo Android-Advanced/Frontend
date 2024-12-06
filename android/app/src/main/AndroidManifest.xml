@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.hansung.market">
     <application
-        android:label="mobile_p"
+        android:label="한성마켓"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

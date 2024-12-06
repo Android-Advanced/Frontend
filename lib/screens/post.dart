@@ -204,12 +204,33 @@ class _PostState extends State<Post> {
 
   Future<void> _deletePost() async {
     try {
-      final docId = widget.itemData['itemId'];
-      if (docId != null && docId.isNotEmpty) {
-        await FirebaseFirestore.instance.collection('items').doc(docId).delete();
+      final String docId = widget.itemData['itemId'] ?? '';
+
+      if (docId.isNotEmpty) {
+        final batch = FirebaseFirestore.instance.batch();
+
+        // 1. 게시글 문서 삭제
+        final postDocRef = FirebaseFirestore.instance.collection('items').doc(docId);
+        batch.delete(postDocRef);
+
+        // 2. likedItems 컬렉션에서 해당 게시글을 좋아요한 기록 삭제
+        final likedItemsQuery = await FirebaseFirestore.instance
+            .collection('likedItems')
+            .where('itemId', isEqualTo: docId)
+            .get();
+
+        for (var doc in likedItemsQuery.docs) {
+          batch.delete(doc.reference);
+        }
+
+        // 3. 배치 실행
+        await batch.commit();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('게시물이 삭제되었습니다.')),
         );
+
+        // 게시물 삭제 후 화면 닫기
         Navigator.pop(context);
       }
     } catch (e) {

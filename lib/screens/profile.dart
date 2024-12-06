@@ -90,7 +90,7 @@ class _ProfileState extends State<Profile> {
         mainAxisAlignment: MainAxisAlignment.start, // Left-align
         children: [
           Image.asset(
-            'assets/images/bugi2.png', // Adjust the path to your image
+            'assets/images/bugi2_2.png', // Adjust the path to your image
             width: 40,
             height: 40,
           ),
@@ -128,7 +128,6 @@ class _ProfileState extends State<Profile> {
       },
       {"icon": Icons.shopping_bag_outlined, "title": "내가 등록한 상품"},
       {"icon": Icons.inventory_2_outlined, "title": "거래 내역"},
-      {"icon": Icons.category_outlined, "title": "관심 카테고리"},
       {"icon": Icons.star_border, "title": "거래 후기"},
     ];
 
@@ -190,12 +189,6 @@ class _ProfileState extends State<Profile> {
                   trailing: option['trailing'],
                   onTap: () {
                     switch (option['title']) {
-                      case "관심 카테고리":
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => Home()),
-                        );
-                        break;
                       case "거래 내역":
                         Navigator.push(
                           context,
