@@ -395,7 +395,7 @@ class _PostState extends State<Post> {
                           'price': '${widget.itemData['price']}원', // 상품 가격
                           'product': widget.itemData['title'] ?? '제목 없음', // 상품 이름
                           'productImage': widget.itemData['image'] ?? '', // 상품 이미지
-                          'profileImage': currentUser.photoURL ?? '', // 현재 사용자 프로필 이미지
+                          'profileImage': profileImageUrl ?? '', // 현재 사용자 프로필 이미지
                           'time': '1주전', // 현재 시간
                           'temperature': '37.2°C', // 더미 데이터
                           'senderId' : '',

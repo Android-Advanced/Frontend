@@ -154,6 +154,12 @@ class _ChatScreenState extends State<ChatScreen> {
       final currentUser = _auth.currentUser;
       if (currentUser == null) return;
       final String messageText = _messageController.text.trim();
+      final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+      String profileImageUrl = '';
+      if (userDoc.exists) {
+        profileImageUrl = userDoc.data()?['profileImage'] ?? ''; // users 컬렉션에서 profileImage 필드 가져오기
+      }
+
       final messageDoc = await _firestore
           .collection('chatrooms')
           .doc(widget.chatRoomId)
@@ -165,7 +171,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'timestamp': FieldValue.serverTimestamp(),
         'isRead' : false,
         'imageUrl':"",
-
+        'profileImageUrl' : profileImageUrl,
       });
       await _firestore
           .collection('chatrooms')
@@ -386,6 +392,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     var message = messages[index];
                     bool isMe = message['senderId'] == _auth.currentUser?.uid;
 
+
+
+
                     return VisibilityDetector(
                       key: Key(message.id),
                       onVisibilityChanged: (visibilityInfo) {
@@ -402,7 +411,14 @@ class _ChatScreenState extends State<ChatScreen> {
                             if (!isMe) ...[
                               CircleAvatar(
                                 radius: 16,
-                                child: Icon(Icons.person, size: 16),
+                                backgroundImage: message['profileImageUrl'] != null &&
+                                    message['profileImageUrl'].isNotEmpty
+                                    ? NetworkImage(message['profileImageUrl'])
+                                    : null,
+                                child: message['profileImageUrl'] == null ||
+                                    message['profileImageUrl'].isEmpty
+                                    ? Icon(Icons.person, size: 16)
+                                    : null,
                               ),
                               SizedBox(width: 8),
                             ],
