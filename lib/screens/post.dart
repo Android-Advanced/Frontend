@@ -1,11 +1,60 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'chatscreen.dart';
-class Post extends StatelessWidget {
+
+class Post extends StatefulWidget {
   final Map<String, dynamic> itemData;
 
   const Post({super.key, required this.itemData});
+
+  @override
+  _PostState createState() => _PostState();
+}
+
+class _PostState extends State<Post> {
+  String profileImageUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfileImage();
+  }
+
+  Future<void> _fetchUserProfileImage() async {
+    try {
+      final String userId = widget.itemData['userId'] ?? '';
+
+      if (userId.isNotEmpty) {
+        // Firestore에서 users 컬렉션의 userId에 해당하는 문서를 가져옴
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          setState(() {
+            profileImageUrl = userData['profileImage'] ?? '';
+            // Firebase Storage URL 변환
+            if (profileImageUrl.startsWith('gs://')) {
+              FirebaseStorage.instance
+                  .refFromURL(profileImageUrl)
+                  .getDownloadURL()
+                  .then((url) {
+                setState(() {
+                  profileImageUrl = url;
+                });
+              });
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('프로필 이미지 가져오기 실패: $e');
+    }
+  }
 
   String calculateTimeAgo(String createdAt) {
     try {
@@ -45,7 +94,7 @@ class Post extends StatelessWidget {
             // 이미지 섹션
             Center(
               child: Image.network(
-                itemData['image'] ?? '',
+                widget.itemData['image'] ?? '',
                 height: 250,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
@@ -61,10 +110,18 @@ class Post extends StatelessWidget {
                 // 사용자 정보 섹션
                 Row(
                   children: [
-                    Icon(Icons.account_circle, color: Colors.blue),
+                    CircleAvatar(
+                      radius: 25, // 프로필 이미지 크기
+                      backgroundImage: profileImageUrl.isNotEmpty
+                          ? NetworkImage(profileImageUrl)
+                          : null, // 네트워크 이미지
+                      child: profileImageUrl.isEmpty
+                          ? Icon(Icons.account_circle, size: 50, color: Colors.blue)
+                          : null, // 기본 아이콘
+                    ),
                     SizedBox(width: 8),
                     Text(
-                      itemData['displayName'] ?? '사용자 이름 없음',
+                      widget.itemData['displayName'] ?? '사용자 이름 없음',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Spacer(),
@@ -83,7 +140,7 @@ class Post extends StatelessWidget {
                           },
                         ),
                     Text(
-                      '${itemData['hansungPoint'] ?? '포인트 없음'}°C · ${calculateTimeAgo(itemData['createdAt'] ?? '')}',
+                      '${widget.itemData['hansungPoint'] ?? '포인트 없음'}°C · ${calculateTimeAgo(widget.itemData['createdAt'] ?? '')}',
                       style: TextStyle(color: Colors.blue),
                         ),
                       ],
@@ -93,18 +150,18 @@ class Post extends StatelessWidget {
                 SizedBox(height: 8),
                 // 게시글 제목
                 Text(
-                  itemData['title'] ?? '제목 없음',
+                  widget.itemData['title'] ?? '제목 없음',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 4),
                 // 게시글 세부 정보
                 Text(
-                  '${itemData['categories'] ?? '카테고리 없음'} · ${itemData['buyerId']!.isEmpty ? '판매중' : '판매완료'}',
+                  '${widget.itemData['categories'] ?? '카테고리 없음'} · ${widget.itemData['buyerId']!.isEmpty ? '판매중' : '판매완료'}',
                   style: TextStyle(color: Colors.grey),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  itemData['description'] ??
+                  widget.itemData['description'] ??
                       '해당 제품에 대한 설명이 없습니다.',
                   style: TextStyle(fontSize: 14),
                 ),
@@ -113,7 +170,7 @@ class Post extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      '${itemData['price']}원',
+                      '${widget.itemData['price']}원',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -145,18 +202,18 @@ class Post extends StatelessWidget {
                         }
                         final String? buyerName = userDoc.data()?['displayName'];
 
-                        final chatRoomDoc = _firestore.collection('chatrooms').doc('${currentUser.uid}${itemData['userId']}');
+                        final chatRoomDoc = _firestore.collection('chatrooms').doc('${currentUser.uid}${widget.itemData['userId']}');
 
 
                         // Firestore 문서 필드 업데이트
                         await chatRoomDoc.set({
-                          'chatRoomId': '${currentUser.uid}${itemData['userId']}',
+                          'chatRoomId': '${currentUser.uid}${widget.itemData['userId']}',
                           'message': '', // 초기 상태에서는 메시지가 비어 있음
-                          'name': [buyerName,itemData['displayName']], // 대화 상대 이름
-                          'participants': [currentUser.uid, itemData['userId'] ?? 'unknown'], // 참가자 목록
-                          'price': '${itemData['price']}원', // 상품 가격
-                          'product': itemData['title'] ?? '제목 없음', // 상품 이름
-                          'productImage': itemData['image'] ?? '', // 상품 이미지
+                          'name': [buyerName,widget.itemData['displayName']], // 대화 상대 이름
+                          'participants': [currentUser.uid, widget.itemData['userId'] ?? 'unknown'], // 참가자 목록
+                          'price': '${widget.itemData['price']}원', // 상품 가격
+                          'product': widget.itemData['title'] ?? '제목 없음', // 상품 이름
+                          'productImage': widget.itemData['image'] ?? '', // 상품 이미지
                           'profileImage': currentUser.photoURL ?? '', // 현재 사용자 프로필 이미지
                           'time': '1주전', // 현재 시간
                           'temperature': '37.2°C', // 더미 데이터
@@ -170,12 +227,12 @@ class Post extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(
-                              chatRoomId: itemData['title'] ?? '제목 없음', // 채팅방 ID
-                              name: itemData['displayName'] ?? '사용자 이름 없음',
+                              chatRoomId: widget.itemData['title'] ?? '제목 없음', // 채팅방 ID
+                              name: widget.itemData['displayName'] ?? '사용자 이름 없음',
                               temperature: '37.2°C',
-                              product: itemData['title'] ?? '제목 없음',
-                              price: '${itemData['price']}원',
-                              productImage: itemData['image'] ?? '',
+                              product: widget.itemData['title'] ?? '제목 없음',
+                              price: '${widget.itemData['price']}원',
+                              productImage: widget.itemData['image'] ?? '',
                             ),
                           ),
                         );
