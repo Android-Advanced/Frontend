@@ -65,6 +65,51 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     if (confirmation == true) {
+      try {
+        final currentUser = FirebaseAuth.instance.currentUser;
+
+        if (currentUser != null) {
+          // 현재 채팅방의 데이터를 가져옴
+          final chatRoomRef = FirebaseFirestore.instance.collection('chatrooms').doc(widget.chatRoomId);
+          final chatRoomSnapshot = await chatRoomRef.get();
+          final chatRoomData = chatRoomSnapshot.data() as Map<String, dynamic>;
+
+          // participants 배열의 0번 인덱스를 buyerId로 설정
+          final participants = List<String>.from(chatRoomData['participants']);
+          final buyerId = participants.isNotEmpty ? participants[0] : null;
+
+          if (buyerId != null && buyerId.isNotEmpty) {
+            // items 컬렉션에서 거래 완료 처리 (게시글 주인의 userId와 buyerId를 업데이트)
+            final sellerId = currentUser.uid;
+            final itemQuery = await FirebaseFirestore.instance
+                .collection('items')
+                .where('userId', isEqualTo: sellerId)
+                .where('title', isEqualTo: chatRoomData['product']) // 상품 제목으로 매칭
+                .get();
+
+            if (itemQuery.docs.isNotEmpty) {
+              final itemDocRef = itemQuery.docs.first.reference;
+              await itemDocRef.update({'buyerId': buyerId});
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('거래가 완료되었습니다.')),
+              );
+            } else {
+              print("해당 상품을 찾을 수 없습니다.");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('거래 완료 처리 중 오류가 발생했습니다.')),
+              );
+            }
+          } else {
+            print("buyerId를 결정할 수 없습니다.");
+          }
+        }
+      } catch (e) {
+        print("거래 완료 처리 중 오류 발생: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('거래 완료 처리 중 오류가 발생했습니다.')),
+        );
+      }
 
       // 거래 완료 후 리뷰 요청 팝업 표시
       final reviewConfirmation = await showDialog<bool>(
@@ -91,14 +136,14 @@ class _ChatScreenState extends State<ChatScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => ReviewScreen(
-              chatRoomId: widget.chatRoomId, // productImage 전달
-            ), // 리뷰 작성 화면
-
+              chatRoomId: widget.chatRoomId, // chatRoomId 전달
+            ),
           ),
         );
       }
     }
   }
+
 
 
   void _leaveChatRoom() async {
