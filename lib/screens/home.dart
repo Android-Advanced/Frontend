@@ -35,14 +35,20 @@ class _HomeState extends State<Home> {
     '식물',
     '상품권'
   ];
-  List<String> selectedCategories = [];
+  List<String> userCategories = []; // 관심 카테고리
+  List<String> selectedCategories = []; // 현재 필터링된 카테고리
 
   @override
   void initState() {
     super.initState();
     searchQuery = widget.searchQuery;
-    _fetchItemsFromFirestore();
-    _fetchUserCategories();
+    // 관심 카테고리를 먼저 가져온 후 아이템을 로드
+    _fetchUserCategories().then((_) {
+      _fetchItemsFromFirestore().then((_) {
+        // 데이터를 가져온 후 초기 필터링 적용
+        _applyFilter();
+      });
+    });
   }
 
   Future<void> _fetchItemsFromFirestore() async {
@@ -90,7 +96,8 @@ class _HomeState extends State<Home> {
         final data = userDoc.data() as Map<String, dynamic>;
         if (data['categories'] != null) {
           setState(() {
-            selectedCategories = List<String>.from(data['categories']);
+            userCategories = List<String>.from(data['categories']); // 관심 카테고리 저장
+            selectedCategories = []; // 초기에는 선택되지 않음
           });
         }
       }
@@ -99,15 +106,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-  void _applyFilter() {
-    setState(() {
-      filteredDatas = searchQuery.isEmpty
-          ? datas
-          : datas
-          .where((item) => item['title']!.toLowerCase().contains(searchQuery.toLowerCase()))
-          .toList();
-    });
-  }
 
   Future<void> _toggleLike(String itemId, int currentLikes) async {
     try {
@@ -139,6 +137,21 @@ class _HomeState extends State<Home> {
     return likedSnapshot.exists;
   }
 
+  void _applyFilter() {
+    setState(() {
+      if (selectedCategories.isEmpty) {
+        // 카테고리가 선택되지 않으면 전체 데이터를 표시
+        filteredDatas = datas;
+      } else {
+        // 선택된 카테고리로 필터링
+        filteredDatas = datas.where((item) {
+          final itemCategories = List<String>.from(item['categories'] ?? []);
+          return selectedCategories.any((category) => itemCategories.contains(category));
+        }).toList();
+      }
+    });
+  }
+
   PreferredSizeWidget _appbarWidget() {
     return AppBar(
       backgroundColor: Colors.white,
@@ -157,19 +170,27 @@ class _HomeState extends State<Home> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: selectedCategories.map((category) {
+                children: userCategories.map((category) {
+                  final isSelected = selectedCategories.contains(category);
                   return GestureDetector(
-                    onTap: () => _filterByCategory(category),
+                    onTap: () => _toggleCategory(category),
                     child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 8),
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(20),
+                        color: isSelected ? Color(0xFF2657A1) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? Colors.transparent : Colors.black,
+                        ),
                       ),
                       child: Text(
                         category,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isSelected ? Colors.white : Colors.black,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ),
                   );
@@ -207,6 +228,17 @@ class _HomeState extends State<Home> {
         ),
       ],
     );
+  }
+
+  void _toggleCategory(String category) {
+    setState(() {
+      if (selectedCategories.contains(category)) {
+        selectedCategories.remove(category); // 선택 해제
+      } else {
+        selectedCategories = [category]; // 단일 카테고리 선택
+      }
+      _applyFilter(); // 필터링 적용
+    });
   }
 
   Widget _bodyWidget() {
@@ -299,29 +331,23 @@ class _HomeState extends State<Home> {
     );
   }
 
-  void _filterByCategory(String category) {
-    setState(() {
-      filteredDatas = datas
-          .where((item) =>
-      item['categories'] != null && item['categories']!.contains(category))
-          .toList();
-    });
-  }
-
   void _navigateToCategorySelection() async {
+    // CategorySelectionScreen으로 이동
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CategorySelectionScreen(
           allCategories: allCategories,
-          selectedCategories: selectedCategories,
+          selectedCategories: [...userCategories, ...selectedCategories], // 관심 카테고리와 임시 선택된 카테고리 포함
         ),
       ),
     );
 
-    if (result != null) {
+    if (result != null && result is List<String>) {
       setState(() {
-        selectedCategories = result;
+        final newCategories = result.where((cat) => !userCategories.contains(cat)).toList();
+        userCategories.addAll(newCategories); // 관심 카테고리 목록에 임시 카테고리 추가
+        _applyFilter(); // 필터링 적용
       });
     }
   }
