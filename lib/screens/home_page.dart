@@ -12,112 +12,45 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-
 class _HomePageState extends State<HomePage> {
-  List<Map<String, String>> datas = [];
   late int currentPageIndex;
+  DateTime? _lastPressedAt; // 마지막으로 뒤로가기 버튼을 누른 시간
 
   @override
   void initState() {
-    currentPageIndex=0;
+    currentPageIndex = 0;
     super.initState();
-    datas = [
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "아이폰 13프로맥스",
-        "price": "1300000",
-        "likes": "15"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "커피머신",
-        "price": "150000",
-        "likes": "1"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }, {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/2.jpg",
-        "title": "커피머신",
-        "price": "150000",
-        "likes": "1"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }, {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      },
-      {
-        "image": "assets/images/1.jpg",
-        "title": "샌드위치 팝니다",
-        "price": "3000",
-        "likes": "2"
-      }
-    ];
   }
 
-
-
-  String calcStringToWon(String priceString){
-    return "원";
-  }
+  // 각 탭에 해당하는 위젯 반환
   Widget _bodyWidget() {
-    switch (currentPageIndex){
+    switch (currentPageIndex) {
       case 0:
-        return Home();
-
+        return Home(); // 홈 화면
       case 1:
-        return Mapscreen();
-
+        return Mapscreen(); // 지도 화면
       case 2:
-        return ChatPage();
-
+        return ChatPage(); // 채팅 화면
       case 3:
-        return Profile();
-
+        return Profile(); // 프로필 화면
+      default:
+        return Container();
     }
-    return Container();
   }
 
+  // BottomNavigationBar 구성
   Widget _bottomNavigationbarWidget() {
     return BottomNavigationBar(
       backgroundColor: Colors.white,
-      type: BottomNavigationBarType.fixed,  // 균등하게 아이템을 배분
-      onTap: (int index){
+      type: BottomNavigationBarType.fixed,
+      onTap: (int index) {
         setState(() {
-          currentPageIndex = index;
+          currentPageIndex = index; // 탭 전환
         });
       },
       selectedFontSize: 12,
       currentIndex: currentPageIndex,
-      items: [
+      items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home, size: 30.0, color: Color(0xFF0E3672)),
           label: "홈",
@@ -135,16 +68,45 @@ class _HomePageState extends State<HomePage> {
           label: "프로필",
         ),
       ],
-      selectedItemColor: Colors.black, // 선택된 항목의 아이콘과 label 색상
-      unselectedItemColor: Colors.black, // 선택되지 않은 항목의 아이콘과 label 색상
-      showUnselectedLabels: true, // 선택되지 않은 항목에도 label 표시
+      selectedItemColor: Colors.black,
+      unselectedItemColor: Colors.black,
+      showUnselectedLabels: true,
     );
   }
+
+  // 뒤로가기 버튼 처리
+  Future<bool> _onWillPop() async {
+    if (currentPageIndex != 0) {
+      // 홈이 아닌 경우, 홈으로 이동
+      setState(() {
+        currentPageIndex = 0;
+      });
+      return false;
+    }
+
+    // 홈에서 뒤로가기 버튼 두 번 눌렀을 때 종료
+    final now = DateTime.now();
+    if (_lastPressedAt == null || now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
+      _lastPressedAt = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('뒤로가기 버튼을 한 번 더 누르시면 앱이 종료됩니다.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: _onWillPop, // 뒤로가기 로직 추가
+      child: Scaffold(
         body: _bodyWidget(),
         bottomNavigationBar: _bottomNavigationbarWidget(),
+      ),
     );
   }
 }

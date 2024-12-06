@@ -4,6 +4,7 @@ import './notification.dart';
 import './post.dart';
 import './post_item.dart'; // Import the new file
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Home extends StatefulWidget {
   final String searchQuery;
@@ -15,10 +16,11 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  List<Map<String, String>> datas = [];
-  List<Map<String, String>> filteredDatas = [];
+  List<Map<String, dynamic>> datas = [];
+  List<Map<String, dynamic>> filteredDatas = [];
   String searchQuery = "";
   DateTime? _lastPressedAt; // 마지막으로 뒤로 가기 버튼을 누른 시간
+  final String? userId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
@@ -34,22 +36,23 @@ class _HomeState extends State<Home> {
           .orderBy('createdAt', descending: true) // 최신 순으로 정렬
           .get();
 
-      final List<Map<String, String>> loadedItems = snapshot.docs.map((doc) {
+      final List<Map<String, dynamic>> loadedItems = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return {
-          "image": (data['image'] ?? '').toString(),
-          "title": (data['title'] ?? '').toString(),
-          "price": (data['price'] ?? '').toString(),
-          "userId": (data['userId'] ?? '').toString(),
-          "likes": (data['likes'] ?? '').toString(),
-          "description": (data['description'] ?? '').toString(),
-          "displayName": (data['displayName'] ?? '').toString(),
+          "itemId": doc.id, // Firestore 문서 ID를 itemId로 포함
+          "image": data['image'] ?? '',
+          "title": data['title'] ?? '',
+          "price": (data['price'] ?? 0).toString(), // int를 String으로 변환
+          "userId": data['userId'] ?? '',
+          "likes": (data['likes'] ?? 0).toString(), // int를 String으로 변환
+          "description": data['description'] ?? '',
+          "displayName": data['displayName'] ?? '',
           "createdAt": data['createdAt'] != null
               ? (data['createdAt'] as Timestamp).toDate().toIso8601String()
               : '',
-          "hansungPoint": (data['hansungPoint'] ?? '').toString(),
-          "categories": (data['categories'] ?? '').toString(),
-          "buyerId": (data['buyerId'] ?? '').toString(),
+          "hansungPoint": (data['hansungPoint'] ?? 0).toString(), // int를 String으로 변환
+          "categories": data['categories'] ?? '',
+          "buyerId": data['buyerId'] ?? '',
         };
       }).toList();
 
@@ -62,15 +65,47 @@ class _HomeState extends State<Home> {
     }
   }
 
+
   void _applyFilter() {
     setState(() {
       filteredDatas = searchQuery.isEmpty
           ? datas
           : datas
-          .where((item) =>
-          item['title']!.toLowerCase().contains(searchQuery.toLowerCase()))
+          .where((item) => item['title']!.toLowerCase().contains(searchQuery.toLowerCase()))
           .toList();
     });
+  }
+
+  Future<void> _toggleLike(String itemId, int currentLikes) async {
+    try {
+      final likedItemDoc = FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
+      final likedSnapshot = await likedItemDoc.get();
+      final itemDoc = FirebaseFirestore.instance.collection('items').doc(itemId);
+
+      if (likedSnapshot.exists) {
+        // 관심목록에서 제거
+        await likedItemDoc.delete();
+        await itemDoc.update({'likes': currentLikes - 1});
+      } else {
+        // 관심목록에 추가
+        await likedItemDoc.set({
+          'userId': userId,
+          'itemId': itemId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        await itemDoc.update({'likes': currentLikes + 1});
+      }
+
+      _fetchItemsFromFirestore(); // UI 업데이트
+    } catch (e) {
+      print('좋아요 상태 업데이트 중 오류 발생: $e');
+    }
+  }
+
+  Future<bool> _isLiked(String itemId) async {
+    final likedItemDoc = FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
+    final likedSnapshot = await likedItemDoc.get();
+    return likedSnapshot.exists;
   }
 
   PreferredSizeWidget _appbarWidget() {
@@ -124,14 +159,13 @@ class _HomeState extends State<Home> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         itemBuilder: (BuildContext _context, int index) {
+          final item = filteredDatas[index];
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Post(
-                    itemData: filteredDatas[index],
-                  ),
+                  builder: (context) => Post(itemData: item),
                 ),
               );
             },
@@ -140,9 +174,9 @@ class _HomeState extends State<Home> {
               child: Row(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
                     child: Image.network(
-                      filteredDatas[index]["image"]!,
+                      item["image"]!,
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
@@ -158,21 +192,30 @@ class _HomeState extends State<Home> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(filteredDatas[index]["title"]!),
+                          Text(item["title"]!),
                           Text(
-                            filteredDatas[index]["price"]! + "원",
-                            style: TextStyle(
-                              color: Color(0xFF0E3672),
-                            ),
+                            '${item["price"]}원',
+                            style: TextStyle(color: Color(0xFF0E3672)),
                           ),
                           Expanded(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
-                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Icon(Icons.favorite, color: Colors.red),
+                                FutureBuilder<bool>(
+                                  future: _isLiked(item["itemId"]),
+                                  builder: (context, snapshot) {
+                                    final isLiked = snapshot.data ?? false;
+                                    return IconButton(
+                                      icon: Icon(
+                                        isLiked ? Icons.favorite : Icons.favorite_border,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => _toggleLike(item["itemId"], int.parse(item["likes"] ?? '0')),
+                                    );
+                                  },
+                                ),
                                 SizedBox(width: 5),
-                                Text(filteredDatas[index]["likes"]!),
+                                Text(item["likes"]!),
                               ],
                             ),
                           ),
@@ -187,14 +230,12 @@ class _HomeState extends State<Home> {
         },
         itemCount: filteredDatas.length,
         separatorBuilder: (BuildContext _context, int index) {
-          return Container(
-            height: 1,
-            color: Colors.black,
-          );
+          return Divider(color: Colors.black);
         },
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
