@@ -68,7 +68,7 @@ class _MapscreenState extends State<Mapscreen> {
                     'categories': data['categories'],
                     'userId': data['userId'],
                     'displayName': data['displayName'],
-                    'createdAt': (data['createdAt'] as Timestamp?)?.toDate().toString(),
+                    'createdAt': data['createdAt'],
                     'buyerId': data['buyerId'] ?? '',
                   },
                 ),
