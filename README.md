@@ -1,16 +1,113 @@
-# mobile_p
+# 📌 프로젝트: 한성마켓 (Hansung Market)
 
-A new Flutter project.
+## 프로젝트 개요
 
-## Getting Started
+<br>
 
-This project is a starting point for a Flutter application.
+**한성마켓**은 한성대학교 학생들을 위한 안전한 중고거래 플랫폼입니다.
+학교 인증 시스템을 통해 신뢰할 수 있는 거래 환경을 제공하며, Android 7.0 이상의 기기에서 실행됩니다.
+특히, **"한성인 지수"**를 통해 거래 신뢰도를 시각적으로 확인할 수 있습니다.
 
-A few resources to get you started if this is your first Flutter project:
+<br>
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 📋 주요 기능
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. **회원가입 및 로그인**
+- Firebase Authentication을 활용하여 로그인 및 인증 기능 구현.
+- 한성대학교 이메일을 통해 가입 및 로그인 가능.
+2. **메인 페이지**
+- **물품 등록**: 상품 이름, 사진, 카테고리 등을 입력해 손쉽게 등록.
+- **카테고리 관리**: 카테고리 선택을 통해 관심 있는 품목을 필터링.
+- **검색 기능**: 제목 기반 검색을 통해 원하는 물품을 쉽게 찾을 수 있음.
+3. **지도 기능**
+- 한성대학교 입구를 기본 화면으로 설정.
+- 등록된 물품의 위치를 지도 상의 마커로 표시.
+- 마커를 클릭하면 해당 상품의 상세 페이지로 이동 가능.
+4. **물품 상세 정보**
+- 상품 가격, 사진, 상세 정보를 확인 가능.
+- **찜하기**: 관심 있는 상품은 하트 버튼을 눌러 관심 목록에 추가.
+- 게시글 작성자는 **게시글 삭제** 기능 제공.
+5. **프로필 관리**
+- 사용자 이름 및 프로필 사진 변경 가능.
+- 관심목록, 등록 상품, 거래 후기 및 거래 내역 확인 가능.
+6. **채팅 기능**
+- **실시간 대화**: 판매자와 구매자 간 채팅 가능.
+- **사진 전송**: 채팅 중 사진 첨부 가능.
+- **채팅 알림**: 읽지 않은 메시지가 표시되며, 알림을 통해 빠르게 확인 가능.
+- 거래 완료 후 **후기 작성** 기능 제공.
+
+<br>
+
+## ⚙️ 기술 스택
+1. **프론트엔드**
+- Flutter: 멀티 플랫폼 UI 개발.
+- Google Maps API: 지도 및 위치 정보 표시.
+2. **백엔드**
+- Firebase Authentication: 사용자 인증.
+- Firebase Firestore: 데이터 저장 및 관리.
+- Firebase Storage: 이미지 저장 및 관리.
+3. **기타**
+- GitHub, Discord를 통한 팀 협업 및 버전 관리.
+
+<br>
+  
+## 🛠 설치 및 실행 방법
+1. 프로젝트 클론
+git clone https://github.com/Android-Advanced/Frontend.git
+cd Frontend
+2. 필수 패키지 설치
+flutter pub get
+3. 앱 실행
+flutter run
+
+<br>
+
+## 🌟 주요 화면
+1. **메인 화면**
+- 카테고리 관리 및 관심 품목 필터링 가능.
+- 물품 목록을 검색하고, 클릭하여 상세 정보를 확인 가능.
+2. **지도 화면**
+- 등록된 물품의 위치를 지도 상에서 마커로 확인 가능.
+- 마커를 클릭하면 상세 정보 화면으로 이동.
+3. **물품 상세 정보 화면**
+- 물품 정보, 판매자 정보, 거래 상태 확인.
+- 찜하기 및 구매자-판매자 채팅 연결 지원.
+4. **채팅 화면**
+- 구매자와 판매자가 실시간으로 대화.
+- 사진 첨부 및 알림 기능 포함.
+5. **프로필 화면**
+- 사용자 이름과 프로필 사진 수정 가능.
+- 관심 목록, 등록한 상품, 거래 후기 및 거래 내역 확인 가능.
+
+<br>
+
+## 🔑 프로젝트 특징
+- **한성대학교 학생 전용** 거래 플랫폼으로 신뢰 기반 구축.
+- **실시간 채팅** 및 **거래 후기 작성**으로 투명한 거래 문화 조성.
+- **한성인 지수**로 사용자 신뢰도를 시각적으로 제공.
+
+<br>
+
+##  💡 팀 정보
+- **한성대학교 고급 모바일 프로그래밍 A반, 6팀**
+- 개발 기간: 한 학기 프로젝트
+- 주요 목표: **신뢰 기반의 안전한 거래 환경** 제공
+
+<br>
+
+## 🙌기여자
+* 2071276 강기영
+* 2091018 나유성
+* 2071271 서정찬
+* 2071116 송상훈
+
+<br>
+
+## 📝참고 자료
+Google Maps API: https://developers.google.com/maps
+Firebase: https://firebase.google.com/
+
+<br>
+
+## 프로젝트 링크
+[GitHub Repository](https://github.com/Android-Advanced/Frontend)
