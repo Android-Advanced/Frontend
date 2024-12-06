@@ -53,10 +53,18 @@ class _HomeState extends State<Home> {
 
   Future<void> _fetchItemsFromFirestore() async {
     try {
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+      Query query = FirebaseFirestore.instance
           .collection('items')
-          .orderBy('createdAt', descending: true)
-          .get();
+          .orderBy('createdAt', descending: true);
+
+      // 검색어가 있을 경우 조건 추가
+      if (searchQuery.isNotEmpty) {
+        query = query
+            .where('title', isGreaterThanOrEqualTo: searchQuery)
+            .where('title', isLessThanOrEqualTo: searchQuery + '\uf8ff');
+      }
+
+      final QuerySnapshot snapshot = await query.get();
 
       final List<Map<String, dynamic>> loadedItems = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -80,12 +88,13 @@ class _HomeState extends State<Home> {
 
       setState(() {
         datas = loadedItems;
-        _applyFilter();
+        _applyFilter(); // 필터링 적용
       });
     } catch (e) {
       print('Firestore 데이터를 불러오는 중 오류 발생: $e');
     }
   }
+
 
   Future<void> _fetchUserCategories() async {
     if (userId == null) return;
@@ -208,10 +217,10 @@ class _HomeState extends State<Home> {
               MaterialPageRoute(builder: (context) => Search()),
             );
 
-            if (result != null) {
+            if (result != null && result is String) {
               setState(() {
-                searchQuery = result;
-                _applyFilter();
+                searchQuery = result; // 검색어 업데이트
+                _fetchItemsFromFirestore(); // 데이터를 다시 가져오기
               });
             }
           },
