@@ -20,60 +20,54 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   void _startListeningToUnreadMessages() {
-    final String? userId = FirebaseAuth.instance.currentUser?.uid;
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
-    if (userId == null) {
+    if (currentUserId == null) {
       print("Error: User not logged in.");
       return;
     }
 
+    // 읽지 않은 메시지 가져오기
     _firestore
         .collection('chatrooms')
         .where('isRead', isEqualTo: false)
         .snapshots()
         .listen((QuerySnapshot snapshot) {
       for (var doc in snapshot.docs) {
-        // senderId가 userId와 같거나 null/빈 문자열인 경우 건너뜀
-        if (doc['senderId'] == userId || doc['senderId'] == null || doc['senderId'] == '') {
-          continue;
-        }
+        final List<dynamic> participants = doc['participants'];
+        final senderId = doc['senderId'];
 
-        final List<String> participants = List<String>.from(doc['participants'] as List<dynamic>);
-        final List<String> names = List<String>.from(doc['name'] as List<dynamic>);
+        if (participants.length != 2 || senderId == null || senderId == '') continue;
 
-        // 내 userId가 participants에 없으면 건너뜀
-        if (!participants.contains(userId)) continue;
+        final String userId = participants[0] == senderId
+            ? participants[1]
+            : participants[0];
+        if (userId == senderId) continue;
 
-        String? senderName;
-        if (participants[0] == userId) {
-          senderName = names[1];
-        } else {
-          senderName = names[0];
-        }
+        // Firestore에서 senderId의 displayName 가져오기
+        _firestore
+            .collection('users')
+            .doc(senderId)
+            .get()
+            .then((userDoc) {
+          final displayName = userDoc.data()?['displayName'] ?? '알 수 없는 사용자';
 
-        // 기존 알림이 있는지 확인
-        _firestore.collection('alarmList').doc(doc.id).get().then((documentSnapshot) {
-          if (!documentSnapshot.exists) {
-            // 새 알림 추가
-            _firestore.collection('alarmList').doc(doc.id).set({
-              'time': doc['time'],
-              'chatroomId': doc.id,
-              'syncedAt': FieldValue.serverTimestamp(),
-              'isRead': false,
-              'senderName': senderName,
-            });
-            print('Synced to alarmList: ${doc.id}');
-          } else if (documentSnapshot.data()?['isRead'] == true) {
-            // 기존 알림을 업데이트하여 다시 활성화
-            _firestore.collection('alarmList').doc(doc.id).update({
-              'time': doc['time'],
-              'syncedAt': FieldValue.serverTimestamp(),
-              'isRead': false, // 다시 읽지 않은 상태로 설정
-            });
-            print('Updated alarm: ${doc.id}');
-          } else {
-            print('Duplicate alarm skipped: ${doc.id}');
-          }
+          // 중복 방지: doc(chatroomId) 사용
+          _firestore.collection('alarmList').doc(doc.id).set({
+            'time': doc['time'],               // 메시지 시간
+            'chatroomId': doc.id,             // 채팅방 ID
+            'senderId': senderId,             // 보낸 사람 ID
+            'userId': userId,                 // 수신자 ID
+            'senderName': displayName,        // Firestore에서 가져온 displayName
+            'syncedAt': FieldValue.serverTimestamp(),
+            'isRead': false,                  // 읽지 않은 상태로 저장
+          }, SetOptions(merge: true)).then((_) {
+            print('New or updated alarm set for chatroom: ${doc.id}');
+          }).catchError((error) {
+            print('Error setting new alarm: $error');
+          });
+        }).catchError((error) {
+          print('Error fetching user displayName: $error');
         });
       }
     });
@@ -82,11 +76,24 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
 
 
+
+
+
+
   // alarm 컬렉션에서 데이터를 가져오는 스트림
   Stream<QuerySnapshot> getAlarmStream() {
-    return _firestore.collection('alarmList').orderBy('syncedAt', descending: true).snapshots();
-  }
+    final String? currentId = FirebaseAuth.instance.currentUser?.uid;
 
+    if (currentId == null) {
+      print("Error: User not logged in.");
+      return const Stream.empty();
+    }
+
+    return _firestore
+        .collection('alarmList')
+        .where('userId',isEqualTo: currentId)
+        .snapshots();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -138,6 +145,24 @@ class NotificationItem extends StatelessWidget {
     required this.chatroomId,
   });
 
+  void _deleteNotification(String chatroomId) async {
+    try {
+      // chatroomId에 해당하는 문서 삭제
+      await _firestore
+          .collection('alarmList')
+          .where('chatroomId', isEqualTo: chatroomId)
+          .get()
+          .then((querySnapshot) {
+        for (var doc in querySnapshot.docs) {
+          _firestore.collection('alarmList').doc(doc.id).delete();
+        }
+      });
+      print('Deleted notification for chatroom: $chatroomId');
+    } catch (e) {
+      print('Error deleting notification: $e');
+    }
+  }
+
   void _markAsRead(String chatroomId) async {
     try {
       await _firestore
@@ -154,6 +179,7 @@ class NotificationItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        _deleteNotification(chatroomId);
         _markAsRead(chatroomId);
         Navigator.push(
           context,
