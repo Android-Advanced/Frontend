@@ -20,7 +20,7 @@ class _HomeState extends State<Home> {
   List<Map<String, dynamic>> datas = [];
   List<Map<String, dynamic>> filteredDatas = [];
   String searchQuery = "";
-  DateTime? _lastPressedAt; // 마지막으로 뒤로 가기 버튼을 누른 시간
+  DateTime? _lastPressedAt;
   final String? userId = FirebaseAuth.instance.currentUser?.uid;
   List<String> allCategories = [
     '맛집 탐방',
@@ -37,63 +37,36 @@ class _HomeState extends State<Home> {
   ];
   List<String> selectedCategories = [];
 
-  void _navigateToCategorySelection() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CategorySelectionScreen(
-          allCategories: allCategories,
-          selectedCategories: selectedCategories,
-        ),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        selectedCategories = result;
-      });
-    }
-  }
-
-  void _filterByCategory(String category) {
-    setState(() {
-      filteredDatas = datas
-          .where((item) =>
-      item['categories'] != null &&
-          item['categories']!.contains(category))
-          .toList();
-    });
-  }
-
   @override
   void initState() {
     super.initState();
-    searchQuery = widget.searchQuery; // 검색어 초기화
+    searchQuery = widget.searchQuery;
     _fetchItemsFromFirestore();
+    _fetchUserCategories();
   }
 
   Future<void> _fetchItemsFromFirestore() async {
     try {
       final QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('items')
-          .orderBy('createdAt', descending: true) // 최신 순으로 정렬
+          .orderBy('createdAt', descending: true)
           .get();
 
       final List<Map<String, dynamic>> loadedItems = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return {
-          "itemId": doc.id, // Firestore 문서 ID를 itemId로 포함
+          "itemId": doc.id,
           "image": data['image'] ?? '',
           "title": data['title'] ?? '',
-          "price": (data['price'] ?? 0).toString(), // int를 String으로 변환
+          "price": (data['price'] ?? 0).toString(),
           "userId": data['userId'] ?? '',
-          "likes": (data['likes'] ?? 0).toString(), // int를 String으로 변환
+          "likes": (data['likes'] ?? 0).toString(),
           "description": data['description'] ?? '',
           "displayName": data['displayName'] ?? '',
           "createdAt": data['createdAt'] != null
               ? (data['createdAt'] as Timestamp).toDate().toIso8601String()
               : '',
-          "hansungPoint": (data['hansungPoint'] ?? 0).toString(), // int를 String으로 변환
+          "hansungPoint": (data['hansungPoint'] ?? 0).toString(),
           "categories": data['categories'] ?? '',
           "buyerId": data['buyerId'] ?? '',
         };
@@ -108,6 +81,23 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> _fetchUserCategories() async {
+    if (userId == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        if (data['categories'] != null) {
+          setState(() {
+            selectedCategories = List<String>.from(data['categories']);
+          });
+        }
+      }
+    } catch (e) {
+      print('사용자 카테고리를 가져오는 중 오류 발생: $e');
+    }
+  }
 
   void _applyFilter() {
     setState(() {
@@ -126,11 +116,9 @@ class _HomeState extends State<Home> {
       final itemDoc = FirebaseFirestore.instance.collection('items').doc(itemId);
 
       if (likedSnapshot.exists) {
-        // 관심목록에서 제거
         await likedItemDoc.delete();
         await itemDoc.update({'likes': currentLikes - 1});
       } else {
-        // 관심목록에 추가
         await likedItemDoc.set({
           'userId': userId,
           'itemId': itemId,
@@ -139,7 +127,7 @@ class _HomeState extends State<Home> {
         await itemDoc.update({'likes': currentLikes + 1});
       }
 
-      _fetchItemsFromFirestore(); // UI 업데이트
+      _fetchItemsFromFirestore();
     } catch (e) {
       print('좋아요 상태 업데이트 중 오류 발생: $e');
     }
@@ -304,6 +292,32 @@ class _HomeState extends State<Home> {
     );
   }
 
+  void _filterByCategory(String category) {
+    setState(() {
+      filteredDatas = datas
+          .where((item) =>
+      item['categories'] != null && item['categories']!.contains(category))
+          .toList();
+    });
+  }
+
+  void _navigateToCategorySelection() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategorySelectionScreen(
+          allCategories: allCategories,
+          selectedCategories: selectedCategories,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        selectedCategories = result;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
