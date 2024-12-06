@@ -1,12 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.hansung.market">
+
+    <!-- 위치 서비스 권한 추가 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
     <application
         android:label="mobile_p"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <meta-data android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAiXnD0ethz5DHmj6KwXQB-cm8EbtGU4wk"/>
-        "
+        <!-- Google Maps API 키 추가 -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyAiXnD0ethz5DHmj6KwXQB-cm8EbtGU4wk" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -35,6 +43,7 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.

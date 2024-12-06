@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'post.dart'; // Post 화면 파일 import
 
 class Mapscreen extends StatefulWidget {
   const Mapscreen({Key? key}) : super(key: key);
@@ -52,6 +53,28 @@ class _MapscreenState extends State<Mapscreen> {
             snippet: data['description'],
           ),
           icon: markerIcon,
+          onTap: () {
+            // 마커 클릭 시 Post 화면으로 이동
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Post(
+                  itemData: {
+                    'itemId': doc.id,
+                    'image': data['image'],
+                    'title': data['title'],
+                    'description': data['description'],
+                    'price': data['price'],
+                    'categories': data['categories'],
+                    'userId': data['userId'],
+                    'displayName': data['displayName'],
+                    'createdAt': (data['createdAt'] as Timestamp?)?.toDate().toString(),
+                    'buyerId': data['buyerId'] ?? '',
+                  },
+                ),
+              ),
+            );
+          },
         );
 
         setState(() {
