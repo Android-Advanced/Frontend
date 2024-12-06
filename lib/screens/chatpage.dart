@@ -154,6 +154,8 @@ class _ChatPageState extends State<ChatPage> {
                             userSnapshot.data!.data() as Map<String, dynamic>;
                             final profileImage =
                                 userData['profileImage'] ?? '';
+                            final userTemp =
+                            (userData['hansungPoint'] ?? 0).toDouble();
 
                             return CircleAvatar(
                               backgroundImage: profileImage.isNotEmpty
@@ -176,19 +178,33 @@ class _ChatPageState extends State<ChatPage> {
                               ),
                             ),
                             SizedBox(width: 5),
-                            Text(
-                              chat['temperature'],
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: Colors.blue,
-                              ),
+
+                            StreamBuilder<DocumentSnapshot>(
+                              stream: firestore
+                                  .collection('users')
+                                  .doc(otherUserId)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                if (!snapshot.hasData) return Text('...');
+                                final userData = snapshot.data!.data() as Map<String, dynamic>;
+                                final userTemp = (userData['hansungPoint'] ?? 0).toDouble();
+                                return Text(
+                                  userTemp.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                                );
+                              },
                             ),
                             SizedBox(width: 5),
                             Text(
                              _calculateTimeDifference(chat['lastMessageTimeStamp']),
                               style: TextStyle(fontSize: 12, color: Colors.grey),
                             ),
+
+
                           ],
                         ),
                         subtitle: Row(

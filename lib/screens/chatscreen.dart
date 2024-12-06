@@ -279,13 +279,61 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             SizedBox(width: 8),
-            Text(
-              widget.temperature,
-              style: TextStyle(
-                color: Colors.blue,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('chatrooms')
+                  .doc(widget.chatRoomId)
+                  .snapshots(),
+              builder: (context, chatroomSnapshot) {
+                if (!chatroomSnapshot.hasData) {
+                  return Text(
+                    '...',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                }
+                final chatRoomData =
+                chatroomSnapshot.data!.data() as Map<String, dynamic>;
+                final participants = List<String>.from(chatRoomData['participants']);
+                final currentUserId = _auth.currentUser?.uid ?? '';
+                final String? otherUserId = (participants[0] == currentUserId)
+                    ? participants[1]
+                    : participants[0];
+
+                return StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(otherUserId)
+                      .snapshots(),
+                  builder: (context, userSnapshot) {
+                    if (!userSnapshot.hasData) {
+                      return Text(
+                        '...',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }
+                    final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                    final temperature = userData['hansungPoint'] ?? 'N/A';
+
+                    return Text(
+                      temperature.toString(),
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
         ),
