@@ -117,7 +117,11 @@ class _ProfileState extends State<Profile> {
 
   Widget _bodyWidget() {
     final List<Map<String, dynamic>> profileOptions = [
-      {"icon": Icons.favorite_border, "title": "관심 목록", "trailing": "($likedItemsCount)"},
+      {
+        "icon": Icons.favorite_border,
+        "title": "관심 목록",
+        "trailing": "($likedItemsCount)"
+      },
       {"icon": Icons.shopping_bag_outlined, "title": "내가 등록한 상품"},
       {"icon": Icons.inventory_2_outlined, "title": "거래 내역"},
       {"icon": Icons.category_outlined, "title": "관심 카테고리"},
@@ -191,7 +195,8 @@ class _ProfileState extends State<Profile> {
                       case "거래 내역":
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => ItemHistoryScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => ItemHistoryScreen()),
                         );
                         break;
                       case "내가 등록한 상품":
@@ -224,16 +229,19 @@ class _ProfileState extends State<Profile> {
 
           SizedBox(height: 20),
           Padding(
-            padding: const EdgeInsets.only(right: 20), // Add space from the right edge
+            padding: const EdgeInsets.only(right: 20),
+            // Add space from the right edge
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end, // Aligns the button to the end
+              mainAxisAlignment: MainAxisAlignment.end,
+              // Aligns the button to the end
               children: [
                 ElevatedButton(
                   onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => EditProfile()),
-                    ).then((_) => _fetchUserData()); // Refresh data after editing
+                    ).then((_) =>
+                        _fetchUserData()); // Refresh data after editing
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF2657A1), // Button color (blue)
@@ -296,10 +304,20 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _appbarWidget(),
-      body: _bodyWidget(),
+    return WillPopScope(
+      onWillPop: () async {
+        // 뒤로 가기 버튼 동작 재정의
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => Home()),
+        );
+        return false; // 현재 화면에서 뒤로 가기 동작 차단
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _appbarWidget(),
+        body: _bodyWidget(),
+      ),
     );
   }
 }
