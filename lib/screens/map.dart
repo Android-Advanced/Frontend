@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import './home.dart';
 
 class Mapscreen extends StatefulWidget {
   const Mapscreen({Key? key}) : super(key: key);
@@ -58,56 +59,70 @@ class _MapscreenState extends State<Mapscreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('지도'),
-      ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: CameraPosition(
-          target: _initialPosition,
-          zoom: _currentZoom, // 초기 줌 레벨
+    return WillPopScope(
+      onWillPop: () async {
+        // 뒤로 가기 버튼을 눌렀을 때 홈 화면으로 이동
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => Home()),
+        );
+        return false; // 현재 화면에서 뒤로 가기 동작 차단
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: Text('지도'),
         ),
-        markers: _markers,
-        myLocationEnabled: true, // 사용자의 현재 위치 표시
-        myLocationButtonEnabled: true, // 현재 위치 버튼 활성화
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: _zoomIn, // 줌인 버튼
-            child: Icon(Icons.zoom_in),
+        body: GoogleMap(
+          onMapCreated: _onMapCreated,
+          initialCameraPosition: CameraPosition(
+            target: _initialPosition,
+            zoom: _currentZoom, // 초기 줌 레벨
           ),
-          SizedBox(height: 10),
-          FloatingActionButton(
-            onPressed: _zoomOut, // 줌아웃 버튼
-            child: Icon(Icons.zoom_out),
-          ),
-          SizedBox(height: 10),
-          FloatingActionButton(
-            onPressed: () {
-              // 새로운 위치 추가
-              setState(() {
-                LatLng newLocation = LatLng(37.5775, 126.9895); // 다른 위치
-                _markers.add(
-                  Marker(
-                    markerId: MarkerId('new_marker'),
-                    position: newLocation,
-                    infoWindow: InfoWindow(
-                      title: '새로운 마커',
-                      snippet: '여기에 새로운 위치를 추가합니다.',
+          markers: _markers,
+          myLocationEnabled: true, // 사용자의 현재 위치 표시
+          myLocationButtonEnabled: true, // 현재 위치 버튼 활성화
+        ),
+        floatingActionButton: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FloatingActionButton(
+              backgroundColor: Colors.white,
+              onPressed: _zoomIn, // 줌인 버튼
+              child: Icon(Icons.zoom_in),
+            ),
+            SizedBox(height: 10),
+            FloatingActionButton(
+              backgroundColor: Colors.white,
+              onPressed: _zoomOut, // 줌아웃 버튼
+              child: Icon(Icons.zoom_out),
+            ),
+            SizedBox(height: 10),
+            FloatingActionButton(
+              backgroundColor: Colors.white,
+              onPressed: () {
+                // 새로운 위치 추가
+                setState(() {
+                  LatLng newLocation = LatLng(37.5775, 126.9895); // 다른 위치
+                  _markers.add(
+                    Marker(
+                      markerId: MarkerId('new_marker'),
+                      position: newLocation,
+                      infoWindow: InfoWindow(
+                        title: '새로운 마커',
+                        snippet: '여기에 새로운 위치를 추가합니다.',
+                      ),
                     ),
-                  ),
-                );
-                _mapController.animateCamera(
-                  CameraUpdate.newLatLng(newLocation),
-                );
-              });
-            },
-            child: Icon(Icons.add_location),
-          ),
-        ],
+                  );
+                  _mapController.animateCamera(
+                    CameraUpdate.newLatLng(newLocation),
+                  );
+                });
+              },
+              child: Icon(Icons.add_location),
+            ),
+          ],
+        ),
       ),
     );
   }
