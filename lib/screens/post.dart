@@ -351,6 +351,7 @@ class _PostState extends State<Post> {
                       style: TextStyle(color: Colors.grey),
                     ),
                     Spacer(),
+                    if (currentUserId != widget.itemData['userId'] && (widget.itemData['buyerId']?.isEmpty ?? true))
                     ElevatedButton(
                       onPressed: () async {
                         final currentUser = FirebaseAuth.instance.currentUser;
