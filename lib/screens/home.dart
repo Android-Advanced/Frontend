@@ -101,11 +101,19 @@ class _HomeState extends State<Home> {
 
   void _applyFilter() {
     setState(() {
-      filteredDatas = searchQuery.isEmpty
-          ? datas
-          : datas
-          .where((item) => item['title']!.toLowerCase().contains(searchQuery.toLowerCase()))
-          .toList();
+      if (selectedCategories.isEmpty) {
+        // 모든 물품을 표시
+        filteredDatas = datas.where((item) =>
+            item['title']!.toLowerCase().contains(searchQuery.toLowerCase())
+        ).toList();
+      } else {
+        // 선택된 카테고리에 해당하는 데이터 필터링
+        filteredDatas = datas.where((item) {
+          final itemCategories = List<String>.from(item['categories'] ?? []);
+          return selectedCategories.any((category) => itemCategories.contains(category)) &&
+              item['title']!.toLowerCase().contains(searchQuery.toLowerCase());
+        }).toList();
+      }
     });
   }
 
@@ -158,23 +166,29 @@ class _HomeState extends State<Home> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: selectedCategories.map((category) {
+                  final isSelected = selectedCategories.contains(category);
                   return GestureDetector(
                     onTap: () => _filterByCategory(category),
                     child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 8),
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        color: isSelected ? Color(0xFF2657A1) : Colors.white,
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? Colors.transparent : Colors.black),
                       ),
                       child: Text(
                         category,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ),
                   );
                 }).toList(),
               ),
+
             ),
           ),
         ],
@@ -294,10 +308,12 @@ class _HomeState extends State<Home> {
 
   void _filterByCategory(String category) {
     setState(() {
-      filteredDatas = datas
-          .where((item) =>
-      item['categories'] != null && item['categories']!.contains(category))
-          .toList();
+      if (selectedCategories.contains(category)) {
+        selectedCategories.remove(category);
+      } else {
+        selectedCategories.add(category);
+      }
+      _applyFilter();
     });
   }
 

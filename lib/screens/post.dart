@@ -34,8 +34,9 @@ class _PostState extends State<Post> {
 
     if (itemId.isEmpty) return;
 
-    final likedItemDoc =
-    FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
+    final likedItemDoc = FirebaseFirestore.instance
+        .collection('likedItems')
+        .doc('${userId}_$itemId');
 
     final likedItemSnapshot = await likedItemDoc.get();
 
@@ -49,8 +50,10 @@ class _PostState extends State<Post> {
       final String userId = widget.itemData['userId'] ?? '';
 
       if (userId.isNotEmpty) {
-        final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
 
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
@@ -82,7 +85,9 @@ class _PostState extends State<Post> {
         await _addToLikedItems();
       }
 
-      final itemDoc = FirebaseFirestore.instance.collection('items').doc(widget.itemData['itemId']);
+      final itemDoc = FirebaseFirestore.instance
+          .collection('items')
+          .doc(widget.itemData['itemId']);
       final snapshot = await itemDoc.get();
       final updatedLikes = snapshot.data()?['likes'] ?? 0;
 
@@ -116,10 +121,12 @@ class _PostState extends State<Post> {
         return;
       }
 
-      final likedItemDoc =
-      FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
+      final likedItemDoc = FirebaseFirestore.instance
+          .collection('likedItems')
+          .doc('${userId}_$itemId');
 
-      final itemDoc = FirebaseFirestore.instance.collection('items').doc(itemId);
+      final itemDoc =
+      FirebaseFirestore.instance.collection('items').doc(itemId);
 
       await likedItemDoc.set({
         'userId': userId,
@@ -146,10 +153,12 @@ class _PostState extends State<Post> {
       final String userId = currentUser.uid;
       final String itemId = widget.itemData['itemId'] ?? '';
 
-      final likedItemDoc =
-      FirebaseFirestore.instance.collection('likedItems').doc('${userId}_$itemId');
+      final likedItemDoc = FirebaseFirestore.instance
+          .collection('likedItems')
+          .doc('${userId}_$itemId');
 
-      final itemDoc = FirebaseFirestore.instance.collection('items').doc(itemId);
+      final itemDoc =
+      FirebaseFirestore.instance.collection('items').doc(itemId);
 
       await likedItemDoc.delete();
       await itemDoc.update({'likes': FieldValue.increment(-1)});
@@ -196,6 +205,7 @@ class _PostState extends State<Post> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // 상품 이미지
             Center(
               child: Image.network(
                 widget.itemData['image'] ?? '',
@@ -210,6 +220,7 @@ class _PostState extends State<Post> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 판매자 프로필과 좋아요 버튼
                 Row(
                   children: [
                     CircleAvatar(
@@ -237,6 +248,7 @@ class _PostState extends State<Post> {
                   ],
                 ),
                 SizedBox(height: 8),
+                // 상품 제목 및 카테고리
                 Text(
                   widget.itemData['title'] ?? '제목 없음',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -247,11 +259,13 @@ class _PostState extends State<Post> {
                   style: TextStyle(color: Colors.grey),
                 ),
                 SizedBox(height: 8),
+                // 상품 설명
                 Text(
                   widget.itemData['description'] ?? '해당 제품에 대한 설명이 없습니다.',
                   style: TextStyle(fontSize: 14),
                 ),
                 SizedBox(height: 16),
+                // 여기에서 가격과 채팅 버튼을 추가합니다.
                 Row(
                   children: [
                     Text(
@@ -264,12 +278,46 @@ class _PostState extends State<Post> {
                     ),
                     Spacer(),
                     ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        // 채팅방 생성 및 이동 로직
+                        final currentUser = FirebaseAuth.instance.currentUser;
+                        if (currentUser == null) {
+                          print("사용자가 로그인하지 않았습니다.");
+                          return;
+                        }
+                        final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+                        final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+                        if (!userDoc.exists) {
+                          print("사용자 문서를 찾을 수 없습니다.");
+                          return;
+                        }
+                        final String? buyerName = userDoc.data()?['displayName'];
+
+                        final chatRoomDoc = _firestore
+                            .collection('chatrooms')
+                            .doc('${currentUser.uid}_${widget.itemData['userId']}');
+                        await chatRoomDoc.set({
+                          'chatRoomId': '${currentUser.uid}_${widget.itemData['userId']}',
+                          'message': '',
+                          'name': [buyerName, widget.itemData['displayName']],
+                          'participants': [currentUser.uid, widget.itemData['userId'] ?? 'unknown'],
+                          'price': '${widget.itemData['price']}원',
+                          'product': widget.itemData['title'] ?? '제목 없음',
+                          'productImage': widget.itemData['image'] ?? '',
+                          'profileImage': currentUser.photoURL ?? '',
+                          'time': '1주 전',
+                          'temperature': '37.2°C',
+                          'senderId': '',
+                          'isRead': false,
+                          'notReadCount': 0,
+                        }, SetOptions(merge: true));
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(
-                              chatRoomId: widget.itemData['title'] ?? '제목 없음',
+                              chatRoomId: '${currentUser.uid}_${widget.itemData['userId']}',
                               name: widget.itemData['displayName'] ?? '사용자 이름 없음',
                               temperature: '37.2°C',
                               product: widget.itemData['title'] ?? '제목 없음',
@@ -300,4 +348,5 @@ class _PostState extends State<Post> {
       ),
     );
   }
+
 }
