@@ -33,6 +33,22 @@ class _ChatPageState extends State<ChatPage> {
         .where('participants', arrayContains: userId) // 필터링 조건
         .snapshots();
   }
+  String _calculateTimeDifference(Timestamp lastMessageTimestamp) {
+    if (lastMessageTimestamp == null) return '시간 정보 없음';
+    DateTime now = DateTime.now(); // 현재 시간
+    DateTime lastMessageTime = lastMessageTimestamp.toDate(); // Firestore Timestamp를 DateTime으로 변환
+    Duration difference = now.difference(lastMessageTime); // 시간 차이 계산
+
+    if (difference.inMinutes < 1) {
+      return '방금 전';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}분 전';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}시간 전';
+    } else {
+      return '${difference.inDays}일 전';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,12 +137,41 @@ class _ChatPageState extends State<ChatPage> {
                       final String? otherUserName = (participants[0] == currentUserId)
                           ? names[1]
                           : names[0];
+                      final String? otherUserId = (participants[0] == currentUserId)
+                          ? participants[1]
+                          : participants[0];
+
                       final bool isUnreadMessage = chat['isRead'] == false &&
                           chat['senderId'] != currentUserId;
 
                       return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: NetworkImage(chat['profileImage']),
+                        leading: StreamBuilder<DocumentSnapshot>(
+                          stream: firestore
+                              .collection('users')
+                              .doc(otherUserId)
+                              .snapshots(),
+                          builder: (context, userSnapshot) {
+                            if (!userSnapshot.hasData) {
+                              return CircleAvatar(
+                                backgroundColor: Colors.black,
+                                child: Icon(Icons.person, color: Colors.white),
+                              );
+                            }
+                            final userData =
+                            userSnapshot.data!.data() as Map<String, dynamic>;
+                            final profileImage =
+                                userData['profileImage'] ?? '';
+
+                            return CircleAvatar(
+                              backgroundImage: profileImage.isNotEmpty
+                                  ? NetworkImage(profileImage) // URL을 CircleAvatar에 설정
+                                  : null,
+                              backgroundColor: profileImage.isEmpty ? Colors.black : null,
+                              child: profileImage.isEmpty
+                                  ? Icon(Icons.person, color: Colors.black) // 프로필 이미지가 없을 때 기본 아이콘
+                                  : null,
+                            );
+                          },
                         ),
                         title: Row(
                           children: [
@@ -148,7 +193,7 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                             SizedBox(width: 5),
                             Text(
-                              chat['time'],
+                             _calculateTimeDifference(chat['lastMessageTimeStamp']),
                               style: TextStyle(fontSize: 12, color: Colors.grey),
                             ),
                           ],

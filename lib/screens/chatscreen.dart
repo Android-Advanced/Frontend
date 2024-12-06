@@ -175,6 +175,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'senderId' : currentUser.uid,
         'isRead' : false,
         'notReadCount': FieldValue.increment(1),
+        'lastMessageTimeStamp' :  FieldValue.serverTimestamp(),
       });
 
       _messageController.clear();
