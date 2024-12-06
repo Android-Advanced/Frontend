@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PostItemScreen extends StatefulWidget {
   @override
@@ -16,10 +17,54 @@ class _PostItemScreenState extends State<PostItemScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   File? _selectedImage; // 선택한 이미지 파일을 저장
   List<String> selectedCategories = [];
+  Position? _currentPosition;
 
   final List<String> allCategories = [
     '맛집 탐방', '전자제품', '건강', '스포츠', '책', '운동', '중고차', '가구', '도서', '식물', '상품권'
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserLocation();
+  }
+
+  Future<void> _getUserLocation() async {
+    try {
+      // 위치 권한 요청
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print("위치 서비스가 비활성화되어 있습니다.");
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print("위치 권한이 거부되었습니다.");
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print("위치 권한이 영구적으로 거부되었습니다.");
+        return;
+      }
+
+      // 현재 위치 가져오기
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _currentPosition = position;
+        print("현재 위치: ${position.latitude}, ${position.longitude}");
+      });
+    } catch (e) {
+      print("위치 가져오기 실패: $e");
+    }
+  }
+
 
   // 이미지 선택
   Future<void> _pickImage() async {
@@ -67,6 +112,11 @@ class _PostItemScreenState extends State<PostItemScreen> {
       return;
     }
 
+    if (_currentPosition == null) {
+      print("현재 위치를 가져올 수 없습니다.");
+      return;
+    }
+
     // 선택된 이미지를 업로드하고 URL 가져오기
     String? imageUrl;
     if (_selectedImage != null) {
@@ -92,12 +142,39 @@ class _PostItemScreenState extends State<PostItemScreen> {
       'displayName' : userDoc['displayName'],
       'buyerId':"",
       'hansungPoint' : hansungPoint,
+      'location': GeoPoint(_currentPosition!.latitude, _currentPosition!.longitude),
     });
 
     print('상품이 성공적으로 등록되었습니다!');
     // 저장 완료 후 이전 화면으로 이동
     Navigator.pop(context);
   }
+
+  void _validateAndSubmit() {
+    if (_titleController.text.isEmpty) {
+      print('제목을 입력해주세요.');
+      return;
+    }
+    if (_priceController.text.isEmpty || int.tryParse(_priceController.text) == null) {
+      print('올바른 가격을 입력해주세요.');
+      return;
+    }
+    if (_descriptionController.text.isEmpty) {
+      print('설명을 입력해주세요.');
+      return;
+    }
+    if (_selectedImage == null) {
+      print('이미지를 선택해주세요.');
+      return;
+    }
+    if (_currentPosition == null) {
+      print('위치를 가져오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    _addItemToFirestore();
+  }
+
 
   @override
   Widget build(BuildContext context) {
