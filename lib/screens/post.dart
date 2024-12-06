@@ -408,7 +408,7 @@ class _PostState extends State<Post> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(
-                              chatRoomId: widget.itemData['title'] ?? '제목 없음', // 채팅방 ID
+                              chatRoomId: '${currentUser.uid}${widget.itemData['userId']}' ?? '제목 없음', // 채팅방 ID
                               name: widget.itemData['displayName'] ?? '사용자 이름 없음',
                               temperature: '37.2°C',
                               product: widget.itemData['title'] ?? '제목 없음',
