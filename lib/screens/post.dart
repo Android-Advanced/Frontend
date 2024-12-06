@@ -409,33 +409,29 @@ class _PostState extends State<Post> {
                             (widget.itemData['buyerId']?.isEmpty ?? true))
                           ElevatedButton(
                             onPressed: () async {
-                              final currentUser = FirebaseAuth.instance
-                                  .currentUser;
+                              final currentUser = FirebaseAuth.instance.currentUser;
 
                               if (currentUser == null) {
                                 print("사용자가 로그인하지 않았습니다.");
                                 return;
                               }
 
-                              final FirebaseFirestore _firestore = FirebaseFirestore
-                                  .instance;
+                              final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-                              final userDoc = await _firestore.collection(
-                                  'users').doc(currentUser.uid).get();
+                              final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
                               if (!userDoc.exists) {
                                 print("사용자 문서를 찾을 수 없습니다.");
                                 return;
                               }
-                              final String? buyerName = userDoc
-                                  .data()?['displayName'];
+                              final String? buyerName = userDoc.data()?['displayName'];
 
-                              final chatRoomDoc = _firestore.collection(
-                                  'chatrooms').doc('${currentUser.uid}${widget
-                                  .itemData['userId']}');
+                              final String chatRoomId = '${currentUser.uid}${widget.itemData['userId']}';
+
+                              final chatRoomDoc = _firestore.collection('chatrooms').doc(chatRoomId);
 
                               await chatRoomDoc.set({
-                                'chatRoomId': '${currentUser.uid}${widget
-                                    .itemData['userId']}',
+                                'chatRoomId': chatRoomId,
+                                'itemId': widget.itemData['itemId'], // itemId 추가
                                 'message': '',
                                 'name': [
                                   buyerName,
@@ -454,24 +450,20 @@ class _PostState extends State<Post> {
                                 'senderId': '',
                                 'isRead': false,
                                 'notReadCount': 0,
-                              }, SetOptions(merge: true));
+                              }, SetOptions(merge: true)); // 기존 데이터 병합
 
+                              // 채팅 화면으로 이동
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      ChatScreen(
-                                        chatRoomId: '${currentUser.uid}${widget
-                                            .itemData['userId']}',
-                                        name: widget.itemData['displayName'] ??
-                                            '사용자 이름 없음',
-                                        temperature: '37.2°C',
-                                        product: widget.itemData['title'] ??
-                                            '제목 없음',
-                                        price: '${widget.itemData['price']}원',
-                                        productImage: widget
-                                            .itemData['image'] ?? '',
-                                      ),
+                                  builder: (context) => ChatScreen(
+                                    chatRoomId: chatRoomId,
+                                    name: widget.itemData['displayName'] ?? '사용자 이름 없음',
+                                    temperature: '37.2°C',
+                                    product: widget.itemData['title'] ?? '제목 없음',
+                                    price: '${widget.itemData['price']}원',
+                                    productImage: widget.itemData['image'] ?? '',
+                                  ),
                                 ),
                               );
                             },

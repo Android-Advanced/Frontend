@@ -69,39 +69,25 @@ class _ChatScreenState extends State<ChatScreen> {
         final currentUser = FirebaseAuth.instance.currentUser;
 
         if (currentUser != null) {
-          // 현재 채팅방의 데이터를 가져옴
-          final chatRoomRef = FirebaseFirestore.instance.collection('chatrooms').doc(widget.chatRoomId);
+          // 게시글 문서 가져오기
+          final chatRoomRef =
+          FirebaseFirestore.instance.collection('chatrooms').doc(widget.chatRoomId);
           final chatRoomSnapshot = await chatRoomRef.get();
           final chatRoomData = chatRoomSnapshot.data() as Map<String, dynamic>;
 
-          // participants 배열의 0번 인덱스를 buyerId로 설정
-          final participants = List<String>.from(chatRoomData['participants']);
-          final buyerId = participants.isNotEmpty ? participants[0] : null;
+          // 게시글의 ID 가져오기 (chatRoomData에 저장된 게시글 ID 필요)
+          final itemId = chatRoomData['itemId']; // chatRoom에 itemId 필드가 있어야 함
+          if (itemId != null && itemId.isNotEmpty) {
+            // items 컬렉션에서 해당 게시글의 buyerId 업데이트
+            final itemDoc =
+            FirebaseFirestore.instance.collection('items').doc(itemId);
+            await itemDoc.update({'buyerId': currentUser.uid});
 
-          if (buyerId != null && buyerId.isNotEmpty) {
-            // items 컬렉션에서 거래 완료 처리 (게시글 주인의 userId와 buyerId를 업데이트)
-            final sellerId = currentUser.uid;
-            final itemQuery = await FirebaseFirestore.instance
-                .collection('items')
-                .where('userId', isEqualTo: sellerId)
-                .where('title', isEqualTo: chatRoomData['product']) // 상품 제목으로 매칭
-                .get();
-
-            if (itemQuery.docs.isNotEmpty) {
-              final itemDocRef = itemQuery.docs.first.reference;
-              await itemDocRef.update({'buyerId': buyerId});
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('거래가 완료되었습니다.')),
-              );
-            } else {
-              print("해당 상품을 찾을 수 없습니다.");
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('거래 완료 처리 중 오류가 발생했습니다.')),
-              );
-            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('거래가 완료되었습니다.')),
+            );
           } else {
-            print("buyerId를 결정할 수 없습니다.");
+            print("itemId가 존재하지 않습니다.");
           }
         }
       } catch (e) {
