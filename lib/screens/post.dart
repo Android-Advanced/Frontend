@@ -310,15 +310,25 @@ class _PostState extends State<Post> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Spacer(),
-                    IconButton(
-                      icon: Icon(
-                        _isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: Colors.red,
-                      ),
-                      onPressed: _toggleLike,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: Colors.red,
+                          ),
+                          onPressed: _toggleLike,
+                        ),
+                        Text(
+                          '${widget.itemData['hansungPoint'] ?? '포인트 없음'}°C · ${calculateTimeAgo(widget.itemData['createdAt'] ?? '')}',
+                          style: TextStyle(color: Colors.blue),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+
                 SizedBox(height: 8),
                 Text(
                   widget.itemData['title'] ?? '제목 없음',
