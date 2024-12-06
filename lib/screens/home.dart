@@ -77,9 +77,7 @@ class _HomeState extends State<Home> {
           "likes": (data['likes'] ?? 0).toString(),
           "description": data['description'] ?? '',
           "displayName": data['displayName'] ?? '',
-          "createdAt": data['createdAt'] != null
-              ? (data['createdAt'] as Timestamp).toDate().toIso8601String()
-              : '',
+          "createdAt": data['createdAt'],
           "hansungPoint": (data['hansungPoint'] ?? 0).toString(),
           "categories": data['categories'] ?? '',
           "buyerId": data['buyerId'] ?? '',
