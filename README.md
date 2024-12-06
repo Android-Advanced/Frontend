@@ -113,3 +113,6 @@ Firebase: https://firebase.google.com/
 
 ## 프로젝트 링크
 [GitHub Repository](https://github.com/Android-Advanced/Frontend)
+
+## 프로젝트 시연 링크
+[YouTube](https://www.youtube.com/watch?v=P6avA-miY1E)
