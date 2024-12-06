@@ -43,7 +43,11 @@ class _ProfileState extends State<Profile> {
       final data = userDoc.data() as Map<String, dynamic>;
       setState(() {
         displayName = data['displayName'] ?? "사용자 이름";
-        hansungPoint = data['hansungPoint'] ?? 0.0;
+
+        // hansungPoint를 소수점 한 자리로 변환
+        double rawPoint = data['hansungPoint']?.toDouble() ?? 0.0;
+        hansungPoint = double.parse(rawPoint.toStringAsFixed(1));
+
         profileImage = data['profileImage'] ?? "";
 
         // Firebase Storage URL 변환
