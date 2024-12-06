@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile_p/screens/review_screen.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 class ChatScreen extends StatefulWidget {
@@ -373,11 +374,13 @@ class _ChatScreenState extends State<ChatScreen> {
                                     SizedBox(height: 5),
                                     Text(
                                       message['timestamp'] != null
-                                          ? (message['timestamp'] as Timestamp).toDate().toString()
-                                          : '',
+                                          ? DateFormat('yyyy-MM-dd HH:mm') // 원하는 날짜/시간 형식
+                                          .format((message['timestamp'] as Timestamp).toDate())
+                                          : '시간 정보 없음', // 값이 없을 때 표시
                                       style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey,
+                                        fontSize: 12, // 약간 더 큰 폰트
+                                        color: Colors.grey.shade700, // 더 잘 보이는 중간 밝기의 색상
+                                        fontWeight: FontWeight.w500, // 가독성을 위한 약간 두꺼운 글꼴
                                       ),
                                     ),
                                   ],
