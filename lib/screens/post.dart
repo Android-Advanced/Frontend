@@ -242,11 +242,12 @@ class _PostState extends State<Post> {
   }
 
 
-  String calculateTimeAgo(String createdAt) {
+  String calculateTimeAgo(Timestamp? createdAt) {
     try {
-      final DateTime createdTime = DateTime.parse(createdAt);
+      if (createdAt == null) return ''; // null일 경우 빈 문자열 반환
+      final DateTime createdTime = createdAt.toDate(); // Timestamp를 DateTime으로 변환
       final Duration difference = DateTime.now().difference(createdTime);
-
+  
       if (difference.inDays > 0) {
         return '${difference.inDays}일 전';
       } else if (difference.inHours > 0) {
@@ -255,7 +256,7 @@ class _PostState extends State<Post> {
         return '${difference.inMinutes}분 전';
       }
     } catch (e) {
-      return '';
+      return ''; // 예외 발생 시 빈 문자열 반환
     }
   }
 
@@ -344,7 +345,7 @@ class _PostState extends State<Post> {
                           onPressed: _toggleLike,
                         ),
                         Text(
-                          '$hansungPoint°C · ${calculateTimeAgo(widget.itemData['createdAt'] ?? '')}',
+                          '$hansungPoint°C · ${calculateTimeAgo(widget.itemData['createdAt'] as Timestamp?)}',
                           style: TextStyle(color: Colors.blue),
                         ),
                       ],
