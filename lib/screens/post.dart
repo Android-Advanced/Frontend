@@ -7,9 +7,17 @@ class Post extends StatelessWidget {
 
   const Post({super.key, required this.itemData});
 
-  String calculateTimeAgo(String createdAt) {
+  String calculateTimeAgo(dynamic createdAt) {
     try {
-      final DateTime createdTime = DateTime.parse(createdAt);
+      DateTime createdTime;
+      if (createdAt is Timestamp) {
+        createdTime = createdAt.toDate(); // Timestamp를 DateTime으로 변환
+      } else if (createdAt is String) {
+        createdTime = DateTime.parse(createdAt); // String을 DateTime으로 변환
+      } else {
+        throw Exception('지원하지 않는 타입');
+      }
+
       final Duration difference = DateTime.now().difference(createdTime);
 
       if (difference.inMinutes < 60) {
